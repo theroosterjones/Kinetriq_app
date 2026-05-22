@@ -1,0 +1,801 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0139FB3FDD13D6E31F9FD10B /* ExerciseAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5E3E2E91BF8C07CBEEB396D /* ExerciseAnalyzer.swift */; };
+		0925D8F315C11DE8287A1568 /* SpineOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D26C63D939C71A3D6F454B5 /* SpineOverlay.swift */; };
+		0A480997AF524E9EA273B770 /* AngleCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC043707BEC87AA5C2BCA58E /* AngleCalculator.swift */; };
+		1517038D6A36C0AF01D4F6D6 /* LatPulldownAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBD0C1D25B50B700C2A4DDB8 /* LatPulldownAnalyzer.swift */; };
+		155B378C89E387C24E936775 /* AssessmentAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BDFDE5807DB7517EDE91EBA /* AssessmentAnalyzer.swift */; };
+		16299A2BCE574E6DA3CE926C /* RowAnalyzerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B2E66D6799B760A5A86798E /* RowAnalyzerTests.swift */; };
+		17D483C5F3CF45FE238E3AF8 /* SquatSagittalAssessment.swift in Sources */ = {isa = PBXBuildFile; fileRef = A28371D9BACFD2C0A37F7140 /* SquatSagittalAssessment.swift */; };
+		18B160AFA72C769BCC82255E /* VideoReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8755ADDDAD932F0C59ED8A20 /* VideoReader.swift */; };
+		2699863EA0F4423E5A487830 /* ShoulderFlexionAssessment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36097019E76E57B9E8B7657B /* ShoulderFlexionAssessment.swift */; };
+		2790D8EA8CC09C8C346DE06C /* AnalysisResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDE3D928D58F055BD19F345F /* AnalysisResult.swift */; };
+		2A575A4B841F9EF88BE78CEA /* RepMetricsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFE1BA99EBE8C4A2561A88C4 /* RepMetricsTests.swift */; };
+		3174863C641AFC7BC1732A2B /* AngleCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCC874CC73FA43ACF9DAF577 /* AngleCalculatorTests.swift */; };
+		39BAAB1D7B87178B0564ACD9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 17BFA6C076D0246293EAC043 /* Assets.xcassets */; };
+		3E4FA68717C0CB44C6DC8FF7 /* ElbowAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F02E144E6C4577287121AA9 /* ElbowAnalyzer.swift */; };
+		4D6EE95DC82522CF11A85F91 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C4486AD4E5C3B9CCE3A7E1C /* SettingsView.swift */; };
+		54DF46358AEB16FCFBE6EAA3 /* SquatAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D1DFF358AF7EBCBC971EE04 /* SquatAnalyzer.swift */; };
+		58665ED36D6E0630925DC14D /* RepCounterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47093B0CA25AA10D9579CB4B /* RepCounterTests.swift */; };
+		5D8BD7E3D5AA4374350884F7 /* RepCounter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87304B14E8A35A0216AB21C9 /* RepCounter.swift */; };
+		65D7C6B0EF137915BC10B7E7 /* LatPulldownFrontAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B8EEA1D8B03AFEE453BBE2C /* LatPulldownFrontAnalyzer.swift */; };
+		69E47FCE0F5162008FE640B8 /* VideoWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8A480814F92E7D53000E01A /* VideoWriter.swift */; };
+		787323B59E3BE8AE1850D42A /* SwiftTasksVision in Frameworks */ = {isa = PBXBuildFile; productRef = F7656B3F65336A267267C2C3 /* SwiftTasksVision */; };
+		862DB4C438EDAB824B4856E2 /* ShoulderFlexionSagittalAssessment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 716F8DF76621314D09A9245B /* ShoulderFlexionSagittalAssessment.swift */; };
+		8745D728F4E7E178D28E01EF /* CameraService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 344197AEFE0D4FAA17164AA1 /* CameraService.swift */; };
+		896618256323389F034003C8 /* MetalCameraRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 431A75A8F8FBF0C0B0EC06AF /* MetalCameraRenderer.swift */; };
+		8D293B5FE3ADF188D64EBE02 /* HipHingeAssessmentAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFC7754113922A72AC4AC339 /* HipHingeAssessmentAnalyzer.swift */; };
+		946F4372AFD7865759C140E2 /* LiveAnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E7B3634BD812A7018DBDC8B /* LiveAnalysisView.swift */; };
+		94E06ECE3581CE106811B7EF /* TempoTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B44BB8281941E51556D41315 /* TempoTracker.swift */; };
+		963B439485D8FC3681216F5C /* HipHingeSideAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 752E389638589177DA02A758 /* HipHingeSideAnalyzer.swift */; };
+		97F08B3AED65353167CD30D6 /* VideoProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 814C21AED8B0135D2360D3F5 /* VideoProcessor.swift */; };
+		9D8305772C4A09CDDEBE748B /* RowAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9AF55648316D07C99A1244F /* RowAnalyzer.swift */; };
+		9F5029F1BB571319B37270D3 /* pose_landmarker_full.task in Resources */ = {isa = PBXBuildFile; fileRef = 4498B3BE6F00ABF7A99AEFBF /* pose_landmarker_full.task */; };
+		A8025D08908444866C359719 /* SquatAssessmentAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDCD651FA2225CF12802BE0A /* SquatAssessmentAnalyzer.swift */; };
+		AC7A02A4E8C49AB2168A4176 /* LandmarkSmoother.swift in Sources */ = {isa = PBXBuildFile; fileRef = B57994F2933D69D5B5D06FCE /* LandmarkSmoother.swift */; };
+		AC8F721F1A0AB5F94730CAFA /* PoseLandmarkerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F590C87C4B1E6C759B60DC9 /* PoseLandmarkerService.swift */; };
+		B8186DD03B11C8BB526ED496 /* LungeAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33DB5C985E124BCAA7E709DA /* LungeAnalyzer.swift */; };
+		BAEF69B138065D99F4132225 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 535839998943F4E9795E2396 /* HomeView.swift */; };
+		BD5BB0BA81552D24850E6BB1 /* DeadliftAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40CDA404091BD32E105DCE6B /* DeadliftAnalyzer.swift */; };
+		BECFA3E91E67536BAA64160F /* AnalysisConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 824862EAD133A667F8B27B44 /* AnalysisConfig.swift */; };
+		C61361AF299078F5F0FD7725 /* OverlayRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E64FD879DE7A1E4EDD9CFDF /* OverlayRenderer.swift */; };
+		CDCE739CC4F23BC22E6985B5 /* AssessmentPlanesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D2D2CCA0EF08F269610BC79 /* AssessmentPlanesTests.swift */; };
+		CE5772419EA7EC41681CBD03 /* KevLines2App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 088A2847B306311ACC68FE8E /* KevLines2App.swift */; };
+		D2B9621E88E9401FF802D1BF /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = B2326D720A33E1D6D75C08F6 /* Shaders.metal */; };
+		D861C20256C1F589423FF941 /* AnalysisLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEB1A2F7812F453D9D6E9C8C /* AnalysisLog.swift */; };
+		D86D94AFDB404EB7D9B8CCAD /* ExerciseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFF5E25C9EA2B7294012F5B6 /* ExerciseView.swift */; };
+		D9816F464298EDFA7B2319B6 /* OverheadPressAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0E8C7D4897244D2EDA54742 /* OverheadPressAnalyzer.swift */; };
+		D9B68FA3A3B461820CC0416A /* HipHingeFrontalAssessment.swift in Sources */ = {isa = PBXBuildFile; fileRef = A62C326B48AB0281152C1802 /* HipHingeFrontalAssessment.swift */; };
+		DB8DC55963C73DCD286A8A53 /* RepMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA76761A200D74E0AB0718BD /* RepMetrics.swift */; };
+		E7581E7556B8C1E193AD0A90 /* HipHingeBackAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 902B92E32D104EE5C9967DCB /* HipHingeBackAnalyzer.swift */; };
+		EDFDD739EE052E9339FA734A /* LandmarkTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35EC4E9C0DF88DF73099D8F4 /* LandmarkTypes.swift */; };
+		EF71C7BEDC048E21E10F0F47 /* WorkoutHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 726F62AE06ED849AEF36B884 /* WorkoutHistoryView.swift */; };
+		F03B45B4D18D552DA063FCD9 /* LiveVideoRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E3C42BB2ECB68A9FED6F87A /* LiveVideoRecorder.swift */; };
+		FB181F97A90E65CF2E826AF0 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33B965AC3123B55942DE22D2 /* ContentView.swift */; };
+		FB9504E33BB40DE609A6D61A /* Exercise.swift in Sources */ = {isa = PBXBuildFile; fileRef = B181F86F55BCC84CBB2FC9E5 /* Exercise.swift */; };
+		FCABF95FC70A15D399585FC2 /* ShoulderAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9F03EEDFC29E22AF2B6A4AD /* ShoulderAnalyzer.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		BC0E96FE93828C9154622D27 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F17B025F96EC2A27BDD7F12E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 22F6B17CE639CEE2A1BD05BF;
+			remoteInfo = Kinetriq;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		088A2847B306311ACC68FE8E /* KevLines2App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KevLines2App.swift; sourceTree = "<group>"; };
+		17BFA6C076D0246293EAC043 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		1B2E66D6799B760A5A86798E /* RowAnalyzerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RowAnalyzerTests.swift; sourceTree = "<group>"; };
+		2D1DFF358AF7EBCBC971EE04 /* SquatAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SquatAnalyzer.swift; sourceTree = "<group>"; };
+		33B965AC3123B55942DE22D2 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		33DB5C985E124BCAA7E709DA /* LungeAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LungeAnalyzer.swift; sourceTree = "<group>"; };
+		344197AEFE0D4FAA17164AA1 /* CameraService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraService.swift; sourceTree = "<group>"; };
+		35EC4E9C0DF88DF73099D8F4 /* LandmarkTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LandmarkTypes.swift; sourceTree = "<group>"; };
+		36097019E76E57B9E8B7657B /* ShoulderFlexionAssessment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShoulderFlexionAssessment.swift; sourceTree = "<group>"; };
+		3BDFDE5807DB7517EDE91EBA /* AssessmentAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssessmentAnalyzer.swift; sourceTree = "<group>"; };
+		40CDA404091BD32E105DCE6B /* DeadliftAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeadliftAnalyzer.swift; sourceTree = "<group>"; };
+		431A75A8F8FBF0C0B0EC06AF /* MetalCameraRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalCameraRenderer.swift; sourceTree = "<group>"; };
+		4498B3BE6F00ABF7A99AEFBF /* pose_landmarker_full.task */ = {isa = PBXFileReference; path = pose_landmarker_full.task; sourceTree = "<group>"; };
+		47093B0CA25AA10D9579CB4B /* RepCounterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepCounterTests.swift; sourceTree = "<group>"; };
+		4E64FD879DE7A1E4EDD9CFDF /* OverlayRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayRenderer.swift; sourceTree = "<group>"; };
+		4F02E144E6C4577287121AA9 /* ElbowAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElbowAnalyzer.swift; sourceTree = "<group>"; };
+		4F590C87C4B1E6C759B60DC9 /* PoseLandmarkerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseLandmarkerService.swift; sourceTree = "<group>"; };
+		535839998943F4E9795E2396 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		6B8EEA1D8B03AFEE453BBE2C /* LatPulldownFrontAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LatPulldownFrontAnalyzer.swift; sourceTree = "<group>"; };
+		6C4486AD4E5C3B9CCE3A7E1C /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		6D26C63D939C71A3D6F454B5 /* SpineOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpineOverlay.swift; sourceTree = "<group>"; };
+		6E3C42BB2ECB68A9FED6F87A /* LiveVideoRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveVideoRecorder.swift; sourceTree = "<group>"; };
+		6E7B3634BD812A7018DBDC8B /* LiveAnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveAnalysisView.swift; sourceTree = "<group>"; };
+		716F8DF76621314D09A9245B /* ShoulderFlexionSagittalAssessment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShoulderFlexionSagittalAssessment.swift; sourceTree = "<group>"; };
+		726F62AE06ED849AEF36B884 /* WorkoutHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutHistoryView.swift; sourceTree = "<group>"; };
+		752E389638589177DA02A758 /* HipHingeSideAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HipHingeSideAnalyzer.swift; sourceTree = "<group>"; };
+		814C21AED8B0135D2360D3F5 /* VideoProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoProcessor.swift; sourceTree = "<group>"; };
+		824862EAD133A667F8B27B44 /* AnalysisConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisConfig.swift; sourceTree = "<group>"; };
+		87304B14E8A35A0216AB21C9 /* RepCounter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepCounter.swift; sourceTree = "<group>"; };
+		8755ADDDAD932F0C59ED8A20 /* VideoReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoReader.swift; sourceTree = "<group>"; };
+		8D2D2CCA0EF08F269610BC79 /* AssessmentPlanesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssessmentPlanesTests.swift; sourceTree = "<group>"; };
+		902B92E32D104EE5C9967DCB /* HipHingeBackAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HipHingeBackAnalyzer.swift; sourceTree = "<group>"; };
+		A0E8C7D4897244D2EDA54742 /* OverheadPressAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverheadPressAnalyzer.swift; sourceTree = "<group>"; };
+		A28371D9BACFD2C0A37F7140 /* SquatSagittalAssessment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SquatSagittalAssessment.swift; sourceTree = "<group>"; };
+		A62C326B48AB0281152C1802 /* HipHingeFrontalAssessment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HipHingeFrontalAssessment.swift; sourceTree = "<group>"; };
+		A9AF55648316D07C99A1244F /* RowAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RowAnalyzer.swift; sourceTree = "<group>"; };
+		AEB1A2F7812F453D9D6E9C8C /* AnalysisLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisLog.swift; sourceTree = "<group>"; };
+		B181F86F55BCC84CBB2FC9E5 /* Exercise.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Exercise.swift; sourceTree = "<group>"; };
+		B2326D720A33E1D6D75C08F6 /* Shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
+		B44BB8281941E51556D41315 /* TempoTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TempoTracker.swift; sourceTree = "<group>"; };
+		B57994F2933D69D5B5D06FCE /* LandmarkSmoother.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LandmarkSmoother.swift; sourceTree = "<group>"; };
+		B8A480814F92E7D53000E01A /* VideoWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoWriter.swift; sourceTree = "<group>"; };
+		BFF5E25C9EA2B7294012F5B6 /* ExerciseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseView.swift; sourceTree = "<group>"; };
+		C5E3E2E91BF8C07CBEEB396D /* ExerciseAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseAnalyzer.swift; sourceTree = "<group>"; };
+		C75532B93D6312257E5F19D3 /* KinetriqTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = KinetriqTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C9F03EEDFC29E22AF2B6A4AD /* ShoulderAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShoulderAnalyzer.swift; sourceTree = "<group>"; };
+		CC043707BEC87AA5C2BCA58E /* AngleCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AngleCalculator.swift; sourceTree = "<group>"; };
+		CFC7754113922A72AC4AC339 /* HipHingeAssessmentAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HipHingeAssessmentAnalyzer.swift; sourceTree = "<group>"; };
+		DA76761A200D74E0AB0718BD /* RepMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepMetrics.swift; sourceTree = "<group>"; };
+		DCC874CC73FA43ACF9DAF577 /* AngleCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AngleCalculatorTests.swift; sourceTree = "<group>"; };
+		DDE3D928D58F055BD19F345F /* AnalysisResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisResult.swift; sourceTree = "<group>"; };
+		EE7DFA37B0CFE9CA55A0E391 /* Kinetriq.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Kinetriq.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		FBD0C1D25B50B700C2A4DDB8 /* LatPulldownAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LatPulldownAnalyzer.swift; sourceTree = "<group>"; };
+		FDCD651FA2225CF12802BE0A /* SquatAssessmentAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SquatAssessmentAnalyzer.swift; sourceTree = "<group>"; };
+		FFE1BA99EBE8C4A2561A88C4 /* RepMetricsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepMetricsTests.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		B707CEAE8744061DDE8448E9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				787323B59E3BE8AE1850D42A /* SwiftTasksVision in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0032E0B211F14BC4BD2C7BA4 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				DCC874CC73FA43ACF9DAF577 /* AngleCalculatorTests.swift */,
+				8D2D2CCA0EF08F269610BC79 /* AssessmentPlanesTests.swift */,
+				47093B0CA25AA10D9579CB4B /* RepCounterTests.swift */,
+				FFE1BA99EBE8C4A2561A88C4 /* RepMetricsTests.swift */,
+				1B2E66D6799B760A5A86798E /* RowAnalyzerTests.swift */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		018721A06A2C16FA7C163833 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				824862EAD133A667F8B27B44 /* AnalysisConfig.swift */,
+				B181F86F55BCC84CBB2FC9E5 /* Exercise.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		1F237A31D0737644D774EA39 /* Analysis */ = {
+			isa = PBXGroup;
+			children = (
+				DDE3D928D58F055BD19F345F /* AnalysisResult.swift */,
+				3BDFDE5807DB7517EDE91EBA /* AssessmentAnalyzer.swift */,
+				C5E3E2E91BF8C07CBEEB396D /* ExerciseAnalyzer.swift */,
+				87304B14E8A35A0216AB21C9 /* RepCounter.swift */,
+				DA76761A200D74E0AB0718BD /* RepMetrics.swift */,
+				6D26C63D939C71A3D6F454B5 /* SpineOverlay.swift */,
+				B44BB8281941E51556D41315 /* TempoTracker.swift */,
+				2E6874BCD30AF791A1723A3B /* Analyzers */,
+			);
+			path = Analysis;
+			sourceTree = "<group>";
+		};
+		2505CB20FC17C4C52F2856B4 /* Metal */ = {
+			isa = PBXGroup;
+			children = (
+				431A75A8F8FBF0C0B0EC06AF /* MetalCameraRenderer.swift */,
+				B2326D720A33E1D6D75C08F6 /* Shaders.metal */,
+			);
+			path = Metal;
+			sourceTree = "<group>";
+		};
+		2AA8297A3E7469C209556C8B /* Pose */ = {
+			isa = PBXGroup;
+			children = (
+				35EC4E9C0DF88DF73099D8F4 /* LandmarkTypes.swift */,
+				4F590C87C4B1E6C759B60DC9 /* PoseLandmarkerService.swift */,
+			);
+			path = Pose;
+			sourceTree = "<group>";
+		};
+		2BEFE54E21BD707D02A275FE /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				17BFA6C076D0246293EAC043 /* Assets.xcassets */,
+				4498B3BE6F00ABF7A99AEFBF /* pose_landmarker_full.task */,
+				1F237A31D0737644D774EA39 /* Analysis */,
+				B87B1B651534944D9A30E5B1 /* App */,
+				E59FE6D634F697CE41CE53CB /* Core */,
+				018721A06A2C16FA7C163833 /* Models */,
+				96E37B409C0FB8975384C1E9 /* Overlay */,
+				B92EEB149F09BF2659C4A9FC /* Views */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		2E6874BCD30AF791A1723A3B /* Analyzers */ = {
+			isa = PBXGroup;
+			children = (
+				40CDA404091BD32E105DCE6B /* DeadliftAnalyzer.swift */,
+				4F02E144E6C4577287121AA9 /* ElbowAnalyzer.swift */,
+				CFC7754113922A72AC4AC339 /* HipHingeAssessmentAnalyzer.swift */,
+				902B92E32D104EE5C9967DCB /* HipHingeBackAnalyzer.swift */,
+				A62C326B48AB0281152C1802 /* HipHingeFrontalAssessment.swift */,
+				752E389638589177DA02A758 /* HipHingeSideAnalyzer.swift */,
+				FBD0C1D25B50B700C2A4DDB8 /* LatPulldownAnalyzer.swift */,
+				6B8EEA1D8B03AFEE453BBE2C /* LatPulldownFrontAnalyzer.swift */,
+				33DB5C985E124BCAA7E709DA /* LungeAnalyzer.swift */,
+				A0E8C7D4897244D2EDA54742 /* OverheadPressAnalyzer.swift */,
+				A9AF55648316D07C99A1244F /* RowAnalyzer.swift */,
+				C9F03EEDFC29E22AF2B6A4AD /* ShoulderAnalyzer.swift */,
+				36097019E76E57B9E8B7657B /* ShoulderFlexionAssessment.swift */,
+				716F8DF76621314D09A9245B /* ShoulderFlexionSagittalAssessment.swift */,
+				2D1DFF358AF7EBCBC971EE04 /* SquatAnalyzer.swift */,
+				FDCD651FA2225CF12802BE0A /* SquatAssessmentAnalyzer.swift */,
+				A28371D9BACFD2C0A37F7140 /* SquatSagittalAssessment.swift */,
+			);
+			path = Analyzers;
+			sourceTree = "<group>";
+		};
+		819D2C92C5776B3494A218AE /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				EE7DFA37B0CFE9CA55A0E391 /* Kinetriq.app */,
+				C75532B93D6312257E5F19D3 /* KinetriqTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		96E37B409C0FB8975384C1E9 /* Overlay */ = {
+			isa = PBXGroup;
+			children = (
+				4E64FD879DE7A1E4EDD9CFDF /* OverlayRenderer.swift */,
+			);
+			path = Overlay;
+			sourceTree = "<group>";
+		};
+		9913AD9CDF9E7114C79264E8 = {
+			isa = PBXGroup;
+			children = (
+				2BEFE54E21BD707D02A275FE /* Sources */,
+				0032E0B211F14BC4BD2C7BA4 /* Tests */,
+				819D2C92C5776B3494A218AE /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		B87B1B651534944D9A30E5B1 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				33B965AC3123B55942DE22D2 /* ContentView.swift */,
+				088A2847B306311ACC68FE8E /* KevLines2App.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		B92EEB149F09BF2659C4A9FC /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				BFF5E25C9EA2B7294012F5B6 /* ExerciseView.swift */,
+				535839998943F4E9795E2396 /* HomeView.swift */,
+				6E7B3634BD812A7018DBDC8B /* LiveAnalysisView.swift */,
+				6C4486AD4E5C3B9CCE3A7E1C /* SettingsView.swift */,
+				726F62AE06ED849AEF36B884 /* WorkoutHistoryView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		C5A22FD62189C8E0677DCE8D /* Math */ = {
+			isa = PBXGroup;
+			children = (
+				CC043707BEC87AA5C2BCA58E /* AngleCalculator.swift */,
+				B57994F2933D69D5B5D06FCE /* LandmarkSmoother.swift */,
+			);
+			path = Math;
+			sourceTree = "<group>";
+		};
+		DB313E124B93839173874333 /* Video */ = {
+			isa = PBXGroup;
+			children = (
+				6E3C42BB2ECB68A9FED6F87A /* LiveVideoRecorder.swift */,
+				814C21AED8B0135D2360D3F5 /* VideoProcessor.swift */,
+				8755ADDDAD932F0C59ED8A20 /* VideoReader.swift */,
+				B8A480814F92E7D53000E01A /* VideoWriter.swift */,
+			);
+			path = Video;
+			sourceTree = "<group>";
+		};
+		E59FE6D634F697CE41CE53CB /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				EEC7992E0DB0D5A4E61E1465 /* Camera */,
+				EFADC6570DFEC70081129955 /* Diagnostics */,
+				C5A22FD62189C8E0677DCE8D /* Math */,
+				2505CB20FC17C4C52F2856B4 /* Metal */,
+				2AA8297A3E7469C209556C8B /* Pose */,
+				DB313E124B93839173874333 /* Video */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		EEC7992E0DB0D5A4E61E1465 /* Camera */ = {
+			isa = PBXGroup;
+			children = (
+				344197AEFE0D4FAA17164AA1 /* CameraService.swift */,
+			);
+			path = Camera;
+			sourceTree = "<group>";
+		};
+		EFADC6570DFEC70081129955 /* Diagnostics */ = {
+			isa = PBXGroup;
+			children = (
+				AEB1A2F7812F453D9D6E9C8C /* AnalysisLog.swift */,
+			);
+			path = Diagnostics;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		22F6B17CE639CEE2A1BD05BF /* Kinetriq */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1DA7650F8AF80D15906D13D0 /* Build configuration list for PBXNativeTarget "Kinetriq" */;
+			buildPhases = (
+				8A5752A2314D83C39A844B71 /* Patch MediaPipe framework plist for App Store validation */,
+				2635ED5220F6F31744EC92BF /* Sources */,
+				6561D4C797AECFC6E251A605 /* Resources */,
+				B707CEAE8744061DDE8448E9 /* Frameworks */,
+				3CC642FB3891571F1EF7C83A /* Patch embedded MediaPipe framework plist for App Store validation */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Kinetriq;
+			packageProductDependencies = (
+				F7656B3F65336A267267C2C3 /* SwiftTasksVision */,
+			);
+			productName = Kinetriq;
+			productReference = EE7DFA37B0CFE9CA55A0E391 /* Kinetriq.app */;
+			productType = "com.apple.product-type.application";
+		};
+		3F1536FAFB7B6920A1009BD6 /* KinetriqTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 61E7D16567B2A4232A4939E9 /* Build configuration list for PBXNativeTarget "KinetriqTests" */;
+			buildPhases = (
+				7B23906824C7CD4208669C74 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				EE14731EA10330B4806E47FA /* PBXTargetDependency */,
+			);
+			name = KinetriqTests;
+			packageProductDependencies = (
+			);
+			productName = KinetriqTests;
+			productReference = C75532B93D6312257E5F19D3 /* KinetriqTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		F17B025F96EC2A27BDD7F12E /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = 5F7C51AD78DCEF58986587D5 /* Build configuration list for PBXProject "Kinetriq" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 9913AD9CDF9E7114C79264E8;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				C92B28FA461FF12191648046 /* XCRemoteSwiftPackageReference "SwiftTasksVision" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 819D2C92C5776B3494A218AE /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				22F6B17CE639CEE2A1BD05BF /* Kinetriq */,
+				3F1536FAFB7B6920A1009BD6 /* KinetriqTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		6561D4C797AECFC6E251A605 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				39BAAB1D7B87178B0564ACD9 /* Assets.xcassets in Resources */,
+				9F5029F1BB571319B37270D3 /* pose_landmarker_full.task in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		3CC642FB3891571F1EF7C83A /* Patch embedded MediaPipe framework plist for App Store validation */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Patch embedded MediaPipe framework plist for App Store validation";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "EMBEDDED_PLIST=\"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/MediaPipeTasksVision.framework/Info.plist\"\nif [ ! -f \"$EMBEDDED_PLIST\" ]; then\n  exit 0\nfi\n\n/usr/libexec/PlistBuddy -c \"Delete :AvailableLibraries\" \"$EMBEDDED_PLIST\" >/dev/null 2>&1 || true\n/usr/libexec/PlistBuddy -c \"Delete :XCFrameworkFormatVersion\" \"$EMBEDDED_PLIST\" >/dev/null 2>&1 || true\n\n/usr/libexec/PlistBuddy -c \"Delete :MinimumOSVersion\" \"$EMBEDDED_PLIST\" >/dev/null 2>&1 || true\n/usr/libexec/PlistBuddy -c \"Add :MinimumOSVersion string ${IPHONEOS_DEPLOYMENT_TARGET}\" \"$EMBEDDED_PLIST\"\n\n/usr/libexec/PlistBuddy -c \"Delete :CFBundleShortVersionString\" \"$EMBEDDED_PLIST\" >/dev/null 2>&1 || true\n/usr/libexec/PlistBuddy -c \"Add :CFBundleShortVersionString string ${MARKETING_VERSION}\" \"$EMBEDDED_PLIST\"\n\n/usr/libexec/PlistBuddy -c \"Delete :CFBundleVersion\" \"$EMBEDDED_PLIST\" >/dev/null 2>&1 || true\n/usr/libexec/PlistBuddy -c \"Add :CFBundleVersion string ${CURRENT_PROJECT_VERSION}\" \"$EMBEDDED_PLIST\"\n\n/usr/libexec/PlistBuddy -c \"Delete :CFBundlePackageType\" \"$EMBEDDED_PLIST\" >/dev/null 2>&1 || true\n/usr/libexec/PlistBuddy -c \"Add :CFBundlePackageType string FMWK\" \"$EMBEDDED_PLIST\"\n";
+		};
+		8A5752A2314D83C39A844B71 /* Patch MediaPipe framework plist for App Store validation */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Patch MediaPipe framework plist for App Store validation";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "DERIVED_DATA_ROOT=\"${BUILD_DIR%/Build/*}\"\nIOS_PLIST=\"${DERIVED_DATA_ROOT}/SourcePackages/checkouts/SwiftTasksVision/Dependencies/MediaPipeTasksVision.xcframework/ios-arm64/MediaPipeTasksVision.framework/Info.plist\"\nSIM_PLIST=\"${DERIVED_DATA_ROOT}/SourcePackages/checkouts/SwiftTasksVision/Dependencies/MediaPipeTasksVision.xcframework/ios-arm64_x86_64-simulator/MediaPipeTasksVision.framework/Info.plist\"\n\npatch_plist() {\n  plist_path=\"$1\"\n  if [ ! -f \"$plist_path\" ]; then\n    return 0\n  fi\n\n  /usr/libexec/PlistBuddy -c \"Delete :MinimumOSVersion\" \"$plist_path\" >/dev/null 2>&1 || true\n  /usr/libexec/PlistBuddy -c \"Add :MinimumOSVersion string ${IPHONEOS_DEPLOYMENT_TARGET}\" \"$plist_path\"\n\n  /usr/libexec/PlistBuddy -c \"Delete :CFBundleShortVersionString\" \"$plist_path\" >/dev/null 2>&1 || true\n  /usr/libexec/PlistBuddy -c \"Add :CFBundleShortVersionString string ${MARKETING_VERSION}\" \"$plist_path\"\n\n  /usr/libexec/PlistBuddy -c \"Delete :CFBundleVersion\" \"$plist_path\" >/dev/null 2>&1 || true\n  /usr/libexec/PlistBuddy -c \"Add :CFBundleVersion string ${CURRENT_PROJECT_VERSION}\" \"$plist_path\"\n}\n\npatch_plist \"$IOS_PLIST\"\npatch_plist \"$SIM_PLIST\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		2635ED5220F6F31744EC92BF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BECFA3E91E67536BAA64160F /* AnalysisConfig.swift in Sources */,
+				D861C20256C1F589423FF941 /* AnalysisLog.swift in Sources */,
+				2790D8EA8CC09C8C346DE06C /* AnalysisResult.swift in Sources */,
+				0A480997AF524E9EA273B770 /* AngleCalculator.swift in Sources */,
+				155B378C89E387C24E936775 /* AssessmentAnalyzer.swift in Sources */,
+				8745D728F4E7E178D28E01EF /* CameraService.swift in Sources */,
+				FB181F97A90E65CF2E826AF0 /* ContentView.swift in Sources */,
+				BD5BB0BA81552D24850E6BB1 /* DeadliftAnalyzer.swift in Sources */,
+				3E4FA68717C0CB44C6DC8FF7 /* ElbowAnalyzer.swift in Sources */,
+				FB9504E33BB40DE609A6D61A /* Exercise.swift in Sources */,
+				0139FB3FDD13D6E31F9FD10B /* ExerciseAnalyzer.swift in Sources */,
+				D86D94AFDB404EB7D9B8CCAD /* ExerciseView.swift in Sources */,
+				8D293B5FE3ADF188D64EBE02 /* HipHingeAssessmentAnalyzer.swift in Sources */,
+				E7581E7556B8C1E193AD0A90 /* HipHingeBackAnalyzer.swift in Sources */,
+				D9B68FA3A3B461820CC0416A /* HipHingeFrontalAssessment.swift in Sources */,
+				963B439485D8FC3681216F5C /* HipHingeSideAnalyzer.swift in Sources */,
+				BAEF69B138065D99F4132225 /* HomeView.swift in Sources */,
+				CE5772419EA7EC41681CBD03 /* KevLines2App.swift in Sources */,
+				AC7A02A4E8C49AB2168A4176 /* LandmarkSmoother.swift in Sources */,
+				EDFDD739EE052E9339FA734A /* LandmarkTypes.swift in Sources */,
+				1517038D6A36C0AF01D4F6D6 /* LatPulldownAnalyzer.swift in Sources */,
+				65D7C6B0EF137915BC10B7E7 /* LatPulldownFrontAnalyzer.swift in Sources */,
+				946F4372AFD7865759C140E2 /* LiveAnalysisView.swift in Sources */,
+				F03B45B4D18D552DA063FCD9 /* LiveVideoRecorder.swift in Sources */,
+				B8186DD03B11C8BB526ED496 /* LungeAnalyzer.swift in Sources */,
+				896618256323389F034003C8 /* MetalCameraRenderer.swift in Sources */,
+				D9816F464298EDFA7B2319B6 /* OverheadPressAnalyzer.swift in Sources */,
+				C61361AF299078F5F0FD7725 /* OverlayRenderer.swift in Sources */,
+				AC8F721F1A0AB5F94730CAFA /* PoseLandmarkerService.swift in Sources */,
+				5D8BD7E3D5AA4374350884F7 /* RepCounter.swift in Sources */,
+				DB8DC55963C73DCD286A8A53 /* RepMetrics.swift in Sources */,
+				9D8305772C4A09CDDEBE748B /* RowAnalyzer.swift in Sources */,
+				4D6EE95DC82522CF11A85F91 /* SettingsView.swift in Sources */,
+				D2B9621E88E9401FF802D1BF /* Shaders.metal in Sources */,
+				FCABF95FC70A15D399585FC2 /* ShoulderAnalyzer.swift in Sources */,
+				2699863EA0F4423E5A487830 /* ShoulderFlexionAssessment.swift in Sources */,
+				862DB4C438EDAB824B4856E2 /* ShoulderFlexionSagittalAssessment.swift in Sources */,
+				0925D8F315C11DE8287A1568 /* SpineOverlay.swift in Sources */,
+				54DF46358AEB16FCFBE6EAA3 /* SquatAnalyzer.swift in Sources */,
+				A8025D08908444866C359719 /* SquatAssessmentAnalyzer.swift in Sources */,
+				17D483C5F3CF45FE238E3AF8 /* SquatSagittalAssessment.swift in Sources */,
+				94E06ECE3581CE106811B7EF /* TempoTracker.swift in Sources */,
+				97F08B3AED65353167CD30D6 /* VideoProcessor.swift in Sources */,
+				18B160AFA72C769BCC82255E /* VideoReader.swift in Sources */,
+				69E47FCE0F5162008FE640B8 /* VideoWriter.swift in Sources */,
+				EF71C7BEDC048E21E10F0F47 /* WorkoutHistoryView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7B23906824C7CD4208669C74 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3174863C641AFC7BC1732A2B /* AngleCalculatorTests.swift in Sources */,
+				CDCE739CC4F23BC22E6985B5 /* AssessmentPlanesTests.swift in Sources */,
+				58665ED36D6E0630925DC14D /* RepCounterTests.swift in Sources */,
+				2A575A4B841F9EF88BE78CEA /* RepMetricsTests.swift in Sources */,
+				16299A2BCE574E6DA3CE926C /* RowAnalyzerTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		EE14731EA10330B4806E47FA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 22F6B17CE639CEE2A1BD05BF /* Kinetriq */;
+			targetProxy = BC0E96FE93828C9154622D27 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		18E3177EA5DA16C5B68B2EAC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Kinetriq;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Kinetriq uses your camera for real-time exercise form analysis with skeleton overlay.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Kinetriq needs access to your photo library to select exercise videos for analysis.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kevinjones.Kinetriq;
+				PRODUCT_MODULE_NAME = Kinetriq;
+				PRODUCT_NAME = Kinetriq;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		3FAFDC21518BFDE7432D296F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.kevinjones.KinetriqTests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Kinetriq.app/Kinetriq";
+			};
+			name = Debug;
+		};
+		A3DDCC2F8632ADA2A7194376 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.kevinjones.KinetriqTests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Kinetriq.app/Kinetriq";
+			};
+			name = Release;
+		};
+		B40A436718F95EA3CEFA1AC0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		C86C8AFB76AFB9DDE20434C6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Kinetriq;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Kinetriq uses your camera for real-time exercise form analysis with skeleton overlay.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Kinetriq needs access to your photo library to select exercise videos for analysis.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kevinjones.Kinetriq;
+				PRODUCT_MODULE_NAME = Kinetriq;
+				PRODUCT_NAME = Kinetriq;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		E27454996635A1C11513321F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1DA7650F8AF80D15906D13D0 /* Build configuration list for PBXNativeTarget "Kinetriq" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C86C8AFB76AFB9DDE20434C6 /* Debug */,
+				18E3177EA5DA16C5B68B2EAC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		5F7C51AD78DCEF58986587D5 /* Build configuration list for PBXProject "Kinetriq" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E27454996635A1C11513321F /* Debug */,
+				B40A436718F95EA3CEFA1AC0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		61E7D16567B2A4232A4939E9 /* Build configuration list for PBXNativeTarget "KinetriqTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3FAFDC21518BFDE7432D296F /* Debug */,
+				A3DDCC2F8632ADA2A7194376 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		C92B28FA461FF12191648046 /* XCRemoteSwiftPackageReference "SwiftTasksVision" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/paescebu/SwiftTasksVision.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.10.14;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		F7656B3F65336A267267C2C3 /* SwiftTasksVision */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C92B28FA461FF12191648046 /* XCRemoteSwiftPackageReference "SwiftTasksVision" */;
+			productName = SwiftTasksVision;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = F17B025F96EC2A27BDD7F12E /* Project object */;
+}
