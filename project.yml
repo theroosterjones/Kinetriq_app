@@ -68,7 +68,7 @@ targets:
           /usr/libexec/PlistBuddy -c "Add :CFBundlePackageType string FMWK" "$EMBEDDED_PLIST"
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.kevinjones.Kinetriq
+        PRODUCT_BUNDLE_IDENTIFIER: com.kevinjones.KevLines2-0
         PRODUCT_NAME: Kinetriq
         PRODUCT_MODULE_NAME: Kinetriq
         TARGETED_DEVICE_FAMILY: "1"
@@ -94,7 +94,7 @@ targets:
       - Tests
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.kevinjones.KinetriqTests
+        PRODUCT_BUNDLE_IDENTIFIER: com.kevinjones.KevLines2-0Tests
         SWIFT_VERSION: "5.9"
         GENERATE_INFOPLIST_FILE: true
     dependencies:
