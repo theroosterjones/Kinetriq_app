@@ -542,7 +542,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 18;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Kinetriq;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Kinetriq uses your camera for real-time exercise form analysis with skeleton overlay.";
@@ -554,7 +554,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 3.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.kevinjones.KevLines2-0";
 				PRODUCT_MODULE_NAME = Kinetriq;
 				PRODUCT_NAME = Kinetriq;
@@ -661,7 +661,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 18;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Kinetriq;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Kinetriq uses your camera for real-time exercise form analysis with skeleton overlay.";
@@ -673,7 +673,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 3.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.kevinjones.KevLines2-0";
 				PRODUCT_MODULE_NAME = Kinetriq;
 				PRODUCT_NAME = Kinetriq;

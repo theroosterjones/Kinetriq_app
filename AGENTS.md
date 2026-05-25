@@ -130,4 +130,4 @@ All four tempo slots use **`.rounded(.down)`** so durations are never overstated
 - [ ] Additional exercises
 - [ ] Export analysis summary
 
-Last updated: **Kinetriq 1.0.0** build **1**.
+Last updated: **Kinetriq 3.0.0** build **18**.

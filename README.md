@@ -1,4 +1,4 @@
-# Kinetriq 1.0 — On-Device Movement Intelligence
+# Kinetriq 3.0 — On-Device Movement Intelligence
 
 > **This is KevLines 3.0** — the public-launch evolution of the private [KevLines2.0](https://github.com/theroosterjones/KevLines2.0) research project. All core technology carries forward; this repo is the clean, user-facing branch.
 
@@ -88,7 +88,7 @@ open Kinetriq.xcodeproj
 
 ## Changelog
 
-### v1.0.0 — Public launch baseline (≡ KevLines 3.3.8)
+### v3.0.0 — Public launch baseline (≡ KevLines 3.3.8)
 
 - Renamed from KevLines to **Kinetriq**; bundle ID, module name, and display name updated throughout.
 - **Home tab** added as the first tab (house icon); app opens to Home on every launch.
