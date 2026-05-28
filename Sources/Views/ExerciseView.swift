@@ -1,25 +1,40 @@
 import SwiftUI
 import PhotosUI
 import AVKit
+import UniformTypeIdentifiers
 import os.log
 
 private let logger = Logger(subsystem: "com.kevinjones.Kinetriq", category: "ExerciseView")
 
 /// Transferable wrapper so PhotosPicker can hand us a video file URL.
+///
+/// Multiple FileRepresentations are required because Photos may export different
+/// video formats under different UTTypes (.movie, .quickTimeMovie, .mpeg4Movie,
+/// .audiovisualContent). Using only .movie causes TransferableSupportError 0 for
+/// HEVC and some .mp4 recordings. We try all common types and copy whichever
+/// matches to a temp file so the URL remains valid after the picker closes.
 struct PickedMovie: Transferable {
     let url: URL
 
     static var transferRepresentation: some TransferRepresentation {
-        FileRepresentation(contentType: .movie) { movie in
-            SentTransferredFile(movie.url)
-        } importing: { received in
-            let dest = FileManager.default.temporaryDirectory
-                .appendingPathComponent(UUID().uuidString)
-                .appendingPathExtension(received.file.pathExtension)
-            try FileManager.default.copyItem(at: received.file, to: dest)
-            return Self(url: dest)
-        }
+        FileRepresentation(contentType: .audiovisualContent) { SentTransferredFile($0.url) }
+            importing: { try Self(url: copyToTemp($0.file)) }
+        FileRepresentation(contentType: .movie) { SentTransferredFile($0.url) }
+            importing: { try Self(url: copyToTemp($0.file)) }
+        FileRepresentation(contentType: .quickTimeMovie) { SentTransferredFile($0.url) }
+            importing: { try Self(url: copyToTemp($0.file)) }
+        FileRepresentation(contentType: .mpeg4Movie) { SentTransferredFile($0.url) }
+            importing: { try Self(url: copyToTemp($0.file)) }
     }
+}
+
+private func copyToTemp(_ file: URL) throws -> URL {
+    let ext = file.pathExtension.isEmpty ? "mov" : file.pathExtension
+    let dest = FileManager.default.temporaryDirectory
+        .appendingPathComponent(UUID().uuidString)
+        .appendingPathExtension(ext)
+    try FileManager.default.copyItem(at: file, to: dest)
+    return dest
 }
 
 private enum AnalysisMode: String, CaseIterable {
