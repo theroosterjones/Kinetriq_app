@@ -38,7 +38,7 @@ struct ExerciseView: View {
         where: { $0.type == .shoulderFlexion }
     )?.defaultPlane ?? .frontal
     @State private var selectedSide: BodySide = .left
-    @State private var overlayMode: OverlayMode = .simple
+    @State private var overlayMode: OverlayMode = .fullHUD
     @State private var selectedVideoItem: PhotosPickerItem?
     @State private var selectedVideoURL: URL?
     @State private var analyzedVideoURL: URL?

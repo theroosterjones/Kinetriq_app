@@ -91,6 +91,9 @@ final class DeadliftAnalyzer: ExerciseAnalyzer {
         instructions.append(contentsOf: SpineOverlay.instructions(
             ear: ear, shoulder: shoulder, hip: hip))
 
+        // Spine reference line (hip → shoulder extended, shows torso lean angle)
+        instructions.append(.extendedLine(from: hip, through: shoulder, color: .cyan, width: 2))
+
         // Spine and leg skeleton
         instructions.append(.line(from: shoulder, to: hip,   color: .green,  width: 3))
         instructions.append(.line(from: hip,      to: knee,  color: .green,  width: 3))

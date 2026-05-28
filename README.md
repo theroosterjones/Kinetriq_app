@@ -1,4 +1,4 @@
-# Kinetriq 3.3.9 — On-Device Movement Intelligence
+# Kinetriq 3.4.0 — On-Device Movement Intelligence
 
 > **This is KevLines 3.0** — the public-launch evolution of the private [KevLines2.0](https://github.com/theroosterjones/KevLines2.0) research project. All core technology carries forward; this repo is the clean, user-facing branch.
 
@@ -87,6 +87,16 @@ open Kinetriq.xcodeproj
 ---
 
 ## Changelog
+
+### v3.4.0 — UI polish, rep counting fixes, extended line overlays
+
+- **Removed Shoulder Assessment from Exercises list** — it remains available under Assessments only.
+- **Elbow curl rep counting fix** — `flexedThreshold` raised from 55° → 85°. Real-world peak bicep curl flexion commonly reads 70–90°; the 55° threshold never triggered, causing 0 reps counted.
+- **Extended reference lines** — Lunge now shows a shin reference line (ankle → knee extended, cyan). Deadlift now shows a spine reference line (hip → shoulder extended, cyan), matching the forearm lines on Row and Lat Pulldown.
+- **Default overlay changed** — Full HUD is now the default mode; Simple is the alternative.
+- **Home tagline** — updated to "Movement Intelligence."
+- **Settings redesigned** — Pose Detection, Smoothing, and Tempo Tracking moved inside a collapsible "Advanced Settings" disclosure group. Disclaimer added at the bottom.
+- **Marketing / build** — `3.4.0` (20).
 
 ### v3.3.9 — Public launch baseline (≡ KevLines 3.3.8 + Kinetriq rebrand)
 

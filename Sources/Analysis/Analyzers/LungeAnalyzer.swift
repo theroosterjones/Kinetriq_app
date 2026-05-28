@@ -71,6 +71,9 @@ final class LungeAnalyzer: ExerciseAnalyzer {
         instructions.append(contentsOf: SpineOverlay.instructions(
             ear: ear, shoulder: shoulder, hip: hip))
 
+        // Lower-leg reference line (ankle → knee extended, shows shin angle)
+        instructions.append(.extendedLine(from: ankle, through: knee, color: .cyan, width: 2))
+
         // Torso and leg skeleton
         instructions.append(.line(from: shoulder, to: hip,   color: .green,  width: 3))
         instructions.append(.line(from: hip,      to: knee,  color: .green,  width: 3))

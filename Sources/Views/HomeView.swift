@@ -18,7 +18,7 @@ struct HomeView: View {
                         .font(.system(size: 40, weight: .bold, design: .rounded))
                         .foregroundStyle(.primary)
 
-                    Text("Movement intelligence, on-device.")
+                    Text("Movement Intelligence")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)

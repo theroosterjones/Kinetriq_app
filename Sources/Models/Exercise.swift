@@ -45,8 +45,6 @@ struct ExerciseConfig {
                        requiresSideSelection: false, defaultSide: .left),
         ExerciseConfig(type: .elbowCurl,          displayName: "Elbow (Bicep/Tricep)",
                        requiresSideSelection: true,  defaultSide: .left),
-        ExerciseConfig(type: .shoulderAssessment, displayName: "Shoulder Assessment",
-                       requiresSideSelection: false, defaultSide: .left),
     ]
 }
 

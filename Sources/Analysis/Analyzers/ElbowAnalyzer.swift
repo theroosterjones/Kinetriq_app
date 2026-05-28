@@ -14,11 +14,11 @@ final class ElbowAnalyzer: ExerciseAnalyzer {
     }
 
     private let smoother = LandmarkSmoother()
-    // Extended threshold lowered to 140: world-landmark elbow angle at full arm extension
-    // typically reads 140–158°, so 155 caused the counter to get permanently stuck in
-    // .flexed after the first curl and count 0 reps.
+    // Extended threshold 140: world-landmark elbow angle at full extension reads 140–158°.
+    // Flexed threshold 85: real-world bicep curl peak flexion commonly reads 70–90°,
+    // so 55 was too strict and caused the counter to never enter .flexed (0 reps).
     // invertPhases: true because curling UP closes the elbow (angle ↓) = concentric.
-    private let repCounter = RepCounter(extendedThreshold: 140, flexedThreshold: 55)
+    private let repCounter = RepCounter(extendedThreshold: 140, flexedThreshold: 85)
     private let tempoTracker = TempoTracker(invertPhases: true)
 
     init(side: BodySide) {
