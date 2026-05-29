@@ -89,12 +89,8 @@ final class HipHingeSideAnalyzer: ExerciseAnalyzer {
         instructions.append(.line(from: plumbTop, to: plumbBottom, color: .magenta, width: 1))
 
         // Extended reference lines showing the angle being measured (spine & femur vectors)
-        if let spineLine = AngleCalculator.extendLineToFrame(p1: shoulder, p2: hip, width: 1, height: 1) {
-            instructions.append(.line(from: hip, to: spineLine, color: .yellow, width: 1))
-        }
-        if let femurLine = AngleCalculator.extendLineToFrame(p1: knee, p2: hip, width: 1, height: 1) {
-            instructions.append(.line(from: hip, to: femurLine, color: .yellow, width: 1))
-        }
+        instructions.append(.extendedLine(from: shoulder, through: hip,  color: .yellow, lineWidth: 1))
+        instructions.append(.extendedLine(from: knee,     through: hip,  color: .yellow, lineWidth: 1))
 
         // Skeleton
         instructions.append(.line(from: shoulder, to: hip,   color: .green,  width: 3))
