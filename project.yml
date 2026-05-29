@@ -25,20 +25,25 @@ targets:
           IOS_PLIST="${DERIVED_DATA_ROOT}/SourcePackages/checkouts/SwiftTasksVision/Dependencies/MediaPipeTasksVision.xcframework/ios-arm64/MediaPipeTasksVision.framework/Info.plist"
           SIM_PLIST="${DERIVED_DATA_ROOT}/SourcePackages/checkouts/SwiftTasksVision/Dependencies/MediaPipeTasksVision.xcframework/ios-arm64_x86_64-simulator/MediaPipeTasksVision.framework/Info.plist"
           
+          MIN_OS="${IPHONEOS_DEPLOYMENT_TARGET:-17.0}"
+          VERSION="${MARKETING_VERSION:-3.4.2}"
+          BUILD="${CURRENT_PROJECT_VERSION:-22}"
+
+          set_or_add() {
+            local key="$1" val="$2" plist="$3"
+            /usr/libexec/PlistBuddy -c "Set :${key} ${val}" "$plist" >/dev/null 2>&1 || \
+            /usr/libexec/PlistBuddy -c "Add :${key} string ${val}" "$plist"
+          }
+
           patch_plist() {
             plist_path="$1"
             if [ ! -f "$plist_path" ]; then
               return 0
             fi
-
-            /usr/libexec/PlistBuddy -c "Delete :MinimumOSVersion" "$plist_path" >/dev/null 2>&1 || true
-            /usr/libexec/PlistBuddy -c "Add :MinimumOSVersion string ${IPHONEOS_DEPLOYMENT_TARGET}" "$plist_path"
-
-            /usr/libexec/PlistBuddy -c "Delete :CFBundleShortVersionString" "$plist_path" >/dev/null 2>&1 || true
-            /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string ${MARKETING_VERSION}" "$plist_path"
-
-            /usr/libexec/PlistBuddy -c "Delete :CFBundleVersion" "$plist_path" >/dev/null 2>&1 || true
-            /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string ${CURRENT_PROJECT_VERSION}" "$plist_path"
+            set_or_add "MinimumOSVersion"          "$MIN_OS"  "$plist_path"
+            set_or_add "CFBundleShortVersionString" "$VERSION" "$plist_path"
+            set_or_add "CFBundleVersion"            "$BUILD"   "$plist_path"
+            echo "Pre-build patched $plist_path"
           }
 
           patch_plist "$IOS_PLIST"
@@ -47,25 +52,37 @@ targets:
       - name: Patch embedded MediaPipe framework plist for App Store validation
         shell: /bin/sh
         script: |
+          # Locate the embedded framework plist — path differs between Debug and Archive builds.
           EMBEDDED_PLIST="${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/MediaPipeTasksVision.framework/Info.plist"
           if [ ! -f "$EMBEDDED_PLIST" ]; then
+            EMBEDDED_PLIST="${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/MediaPipeTasksVision.framework/Info.plist"
+          fi
+          if [ ! -f "$EMBEDDED_PLIST" ]; then
+            echo "MediaPipeTasksVision Info.plist not found — skipping patch"
             exit 0
           fi
 
-          /usr/libexec/PlistBuddy -c "Delete :AvailableLibraries" "$EMBEDDED_PLIST" >/dev/null 2>&1 || true
+          # Use build-setting variables with hardcoded fallbacks in case they are not
+          # exported into the script environment during Archive / Distribution builds.
+          MIN_OS="${IPHONEOS_DEPLOYMENT_TARGET:-17.0}"
+          VERSION="${MARKETING_VERSION:-3.4.2}"
+          BUILD="${CURRENT_PROJECT_VERSION:-22}"
+
+          set_or_add() {
+            local key="$1" val="$2" plist="$3"
+            /usr/libexec/PlistBuddy -c "Set :${key} ${val}" "$plist" >/dev/null 2>&1 || \
+            /usr/libexec/PlistBuddy -c "Add :${key} string ${val}" "$plist"
+          }
+
+          /usr/libexec/PlistBuddy -c "Delete :AvailableLibraries"    "$EMBEDDED_PLIST" >/dev/null 2>&1 || true
           /usr/libexec/PlistBuddy -c "Delete :XCFrameworkFormatVersion" "$EMBEDDED_PLIST" >/dev/null 2>&1 || true
 
-          /usr/libexec/PlistBuddy -c "Delete :MinimumOSVersion" "$EMBEDDED_PLIST" >/dev/null 2>&1 || true
-          /usr/libexec/PlistBuddy -c "Add :MinimumOSVersion string ${IPHONEOS_DEPLOYMENT_TARGET}" "$EMBEDDED_PLIST"
+          set_or_add "MinimumOSVersion"       "$MIN_OS"  "$EMBEDDED_PLIST"
+          set_or_add "CFBundleShortVersionString" "$VERSION" "$EMBEDDED_PLIST"
+          set_or_add "CFBundleVersion"        "$BUILD"   "$EMBEDDED_PLIST"
+          set_or_add "CFBundlePackageType"    "FMWK"     "$EMBEDDED_PLIST"
 
-          /usr/libexec/PlistBuddy -c "Delete :CFBundleShortVersionString" "$EMBEDDED_PLIST" >/dev/null 2>&1 || true
-          /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string ${MARKETING_VERSION}" "$EMBEDDED_PLIST"
-
-          /usr/libexec/PlistBuddy -c "Delete :CFBundleVersion" "$EMBEDDED_PLIST" >/dev/null 2>&1 || true
-          /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string ${CURRENT_PROJECT_VERSION}" "$EMBEDDED_PLIST"
-
-          /usr/libexec/PlistBuddy -c "Delete :CFBundlePackageType" "$EMBEDDED_PLIST" >/dev/null 2>&1 || true
-          /usr/libexec/PlistBuddy -c "Add :CFBundlePackageType string FMWK" "$EMBEDDED_PLIST"
+          echo "Patched $EMBEDDED_PLIST — MinOS=$MIN_OS version=$VERSION build=$BUILD"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.kevinjones.KevLines2-0
