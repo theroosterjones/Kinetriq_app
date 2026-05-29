@@ -72,8 +72,8 @@ targets:
         PRODUCT_NAME: Kinetriq
         PRODUCT_MODULE_NAME: Kinetriq
         TARGETED_DEVICE_FAMILY: "1"
-        MARKETING_VERSION: "3.4.1"
-        CURRENT_PROJECT_VERSION: "21"
+        MARKETING_VERSION: "3.4.2"
+        CURRENT_PROJECT_VERSION: "22"
         SWIFT_VERSION: "5.9"
         INFOPLIST_KEY_CFBundleDisplayName: "Kinetriq"
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "Kinetriq needs access to your photo library to select exercise videos for analysis."

@@ -88,6 +88,18 @@ open Kinetriq.xcodeproj
 
 ## Changelog
 
+### v3.4.2 — Hip Hinge (Side) rep counting for incline hip extension
+
+- **Hip Hinge (Side) rep thresholds updated** — `extendedThreshold` 155° → 150°; `flexedThreshold` 65° → 105°. The old 65° floor was never reached on an incline hip extension machine (range ~165°–95°), causing 0 reps counted. 105° captures both machine stops at ~95° and deep free-weight hinges that pass through 105° on the way down.
+- **Angle measurement clarified** — hip angle continues to use shoulder→hip→knee (spine-line vs femur-line, 3D world landmarks preferred). No calculation change; thresholds were the only issue.
+- **Extended reference lines** — thin yellow lines now extend the spine vector and femur vector beyond the hip joint, visually confirming the measured angle on-screen. Vertical plumb line retained.
+- **Marketing / build** — `3.4.2` (22).
+
+### v3.4.1 — Video loading fix
+
+- **Video loading error resolved** — `PickedMovie.transferRepresentation` now includes `.audiovisualContent`, `.movie`, `.quickTimeMovie`, and `.mpeg4Movie` representations to handle all video formats iOS exports (HEVC, MOV, MP4), eliminating `TransferableSupportError error 0`.
+- **Marketing / build** — `3.4.1` (21).
+
 ### v3.4.0 — UI polish, rep counting fixes, extended line overlays
 
 - **Removed Shoulder Assessment from Exercises list** — it remains available under Assessments only.

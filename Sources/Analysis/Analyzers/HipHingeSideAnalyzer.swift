@@ -2,9 +2,19 @@ import Foundation
 import simd
 
 /// Tracks the hip hinge pattern from a strict side profile view.
-/// Measures the hip angle (shoulder→hip→knee), which opens from ~60° at full hinge
-/// to ~170° when standing. Suited for Romanian deadlifts, good mornings, and hip hinge drills.
-/// Also overlays a vertical plumb line through the hip to help cue a hip-back hinge.
+///
+/// Hip angle = spine line (shoulder→hip) vs femur line (hip→knee), computed with
+/// 3D world landmarks when available. This angle works for both free-weight hinges
+/// (RDL, good morning: top ~165°, bottom ~50–80°) and machine incline hip extensions
+/// (top ~165°, bottom ~90–100°).
+///
+/// Rep thresholds:
+///   extendedThreshold 150° — covers standing lockout for both movement types.
+///   flexedThreshold   105° — catches machine stops at ~95° AND deep free-weight
+///                            hinges that naturally pass through 105° on the way down.
+///
+/// Also overlays a vertical plumb line through the hip as a visual hinge cue, plus
+/// extended reference lines along the spine and femur to show the measured angle.
 final class HipHingeSideAnalyzer: ExerciseAnalyzer {
 
     let exerciseType: ExerciseType = .hipHingeSide
@@ -15,7 +25,7 @@ final class HipHingeSideAnalyzer: ExerciseAnalyzer {
     }
 
     private let smoother     = LandmarkSmoother()
-    private let repCounter   = RepCounter(extendedThreshold: 155, flexedThreshold: 65)
+    private let repCounter   = RepCounter(extendedThreshold: 150, flexedThreshold: 105)
     private let tempoTracker = TempoTracker()
 
     init(side: BodySide) {
@@ -77,6 +87,14 @@ final class HipHingeSideAnalyzer: ExerciseAnalyzer {
         let plumbTop    = SIMD2<Float>(hip.x, hip.y - 0.20)
         let plumbBottom = SIMD2<Float>(hip.x, hip.y + 0.20)
         instructions.append(.line(from: plumbTop, to: plumbBottom, color: .magenta, width: 1))
+
+        // Extended reference lines showing the angle being measured (spine & femur vectors)
+        if let spineLine = AngleCalculator.extendLineToFrame(from: shoulder, through: hip, frameW: 1, frameH: 1) {
+            instructions.append(.line(from: hip, to: spineLine, color: .yellow, width: 1))
+        }
+        if let femurLine = AngleCalculator.extendLineToFrame(from: knee, through: hip, frameW: 1, frameH: 1) {
+            instructions.append(.line(from: hip, to: femurLine, color: .yellow, width: 1))
+        }
 
         // Skeleton
         instructions.append(.line(from: shoulder, to: hip,   color: .green,  width: 3))
