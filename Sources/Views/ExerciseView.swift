@@ -18,13 +18,24 @@ struct PickedMovie: Transferable {
     let url: URL
 
     static var transferRepresentation: some TransferRepresentation {
+        // iOS 26 SDK: only the full init is available. shouldAttemptToOpenInPlace: true
+        // tells Photos to hand us the original file directly rather than transcoding,
+        // which avoids TransferableSupportError 0 for HEVC, ProRes, and Cinematic videos.
         FileRepresentation(contentType: .audiovisualContent,
+                           shouldAttemptToOpenInPlace: true,
+                           exporting: { SentTransferredFile($0.url) },
                            importing: { try Self(url: copyToTemp($0.file)) })
         FileRepresentation(contentType: .movie,
+                           shouldAttemptToOpenInPlace: true,
+                           exporting: { SentTransferredFile($0.url) },
                            importing: { try Self(url: copyToTemp($0.file)) })
         FileRepresentation(contentType: .quickTimeMovie,
+                           shouldAttemptToOpenInPlace: true,
+                           exporting: { SentTransferredFile($0.url) },
                            importing: { try Self(url: copyToTemp($0.file)) })
         FileRepresentation(contentType: .mpeg4Movie,
+                           shouldAttemptToOpenInPlace: true,
+                           exporting: { SentTransferredFile($0.url) },
                            importing: { try Self(url: copyToTemp($0.file)) })
     }
 }
