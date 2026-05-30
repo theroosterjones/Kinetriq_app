@@ -8,23 +8,24 @@ private let logger = Logger(subsystem: "com.kevinjones.Kinetriq", category: "Exe
 
 /// Transferable wrapper so PhotosPicker can hand us a video file URL.
 ///
-/// Multiple FileRepresentations are required because Photos may export different
-/// video formats under different UTTypes (.movie, .quickTimeMovie, .mpeg4Movie,
-/// .audiovisualContent). Using only .movie causes TransferableSupportError 0 for
-/// HEVC and some .mp4 recordings. We try all common types and copy whichever
-/// matches to a temp file so the URL remains valid after the picker closes.
+/// Multiple FileRepresentations (importing only) are required because Photos may
+/// export videos under different UTTypes depending on format and iOS version.
+/// Using only .movie causes TransferableSupportError 0 for HEVC and some .mp4
+/// recordings. Each representation copies the file to a temp URL so it stays
+/// valid after the picker closes. NOTE: exporting closures are intentionally
+/// omitted — PhotosPicker only uses the importing pathway.
 struct PickedMovie: Transferable {
     let url: URL
 
     static var transferRepresentation: some TransferRepresentation {
-        FileRepresentation(contentType: .audiovisualContent) { SentTransferredFile($0.url) }
-            importing: { try Self(url: copyToTemp($0.file)) }
-        FileRepresentation(contentType: .movie) { SentTransferredFile($0.url) }
-            importing: { try Self(url: copyToTemp($0.file)) }
-        FileRepresentation(contentType: .quickTimeMovie) { SentTransferredFile($0.url) }
-            importing: { try Self(url: copyToTemp($0.file)) }
-        FileRepresentation(contentType: .mpeg4Movie) { SentTransferredFile($0.url) }
-            importing: { try Self(url: copyToTemp($0.file)) }
+        FileRepresentation(contentType: .audiovisualContent,
+                           importing: { try Self(url: copyToTemp($0.file)) })
+        FileRepresentation(contentType: .movie,
+                           importing: { try Self(url: copyToTemp($0.file)) })
+        FileRepresentation(contentType: .quickTimeMovie,
+                           importing: { try Self(url: copyToTemp($0.file)) })
+        FileRepresentation(contentType: .mpeg4Movie,
+                           importing: { try Self(url: copyToTemp($0.file)) })
     }
 }
 
