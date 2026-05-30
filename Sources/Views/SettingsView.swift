@@ -1,12 +1,18 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @ObservedObject private var purchases = PurchaseService.shared
     @State private var config = AnalysisConfig.default
     @State private var showAdvanced = false
+    @State private var showPromoCode = false
+    @State private var isRestoring = false
+    @State private var restoreMessage: String?
 
     var body: some View {
         NavigationStack {
             Form {
+                subscriptionSection
+
                 Section("Advanced Settings") {
                     DisclosureGroup(isExpanded: $showAdvanced) {
                         Section("Pose Detection") {
@@ -73,6 +79,69 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+        }
+        .sheet(isPresented: $showPromoCode) { PromoCodeView() }
+        .alert("Restore Purchases", isPresented: .init(
+            get: { restoreMessage != nil },
+            set: { if !$0 { restoreMessage = nil } }
+        )) {
+            Button("OK") { restoreMessage = nil }
+        } message: {
+            Text(restoreMessage ?? "")
+        }
+    }
+
+    // MARK: - Subscription section
+
+    @ViewBuilder
+    private var subscriptionSection: some View {
+        Section("Subscription") {
+            if purchases.hasRedeemedPromoCode() {
+                HStack {
+                    Label("Kinetriq Pro", systemImage: "checkmark.seal.fill")
+                        .foregroundStyle(.cyan)
+                    Spacer()
+                    Text("Promo access")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            } else if purchases.isProUser {
+                HStack {
+                    Label("Kinetriq Pro", systemImage: "checkmark.seal.fill")
+                        .foregroundStyle(.cyan)
+                    Spacer()
+                    Text("Active")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                Button("Manage Subscription") {
+                    if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                .foregroundStyle(.blue)
+            } else {
+                HStack {
+                    Label("No active subscription", systemImage: "xmark.circle")
+                        .foregroundStyle(.secondary)
+                }
+                Button("Restore Purchases") {
+                    Task {
+                        isRestoring = true
+                        defer { isRestoring = false }
+                        do {
+                            try await purchases.restorePurchases()
+                            restoreMessage = "Purchases restored successfully."
+                        } catch {
+                            restoreMessage = error.localizedDescription
+                        }
+                    }
+                }
+                .disabled(isRestoring)
+
+                Button("Have a promo code?") { showPromoCode = true }
+                    .foregroundStyle(.cyan)
+            }
         }
     }
 }

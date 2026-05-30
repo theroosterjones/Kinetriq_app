@@ -10,6 +10,9 @@ packages:
   SwiftTasksVision:
     url: https://github.com/paescebu/SwiftTasksVision.git
     from: "0.10.14"
+  RevenueCat:
+    url: https://github.com/RevenueCat/purchases-ios-spm.git
+    from: "5.0.0"
 
 targets:
   Kinetriq:
@@ -103,6 +106,8 @@ targets:
     dependencies:
       - package: SwiftTasksVision
         product: SwiftTasksVision
+      - package: RevenueCat
+        product: RevenueCat
 
   KinetriqTests:
     type: bundle.unit-test
