@@ -18,13 +18,21 @@ struct PickedMovie: Transferable {
     let url: URL
 
     static var transferRepresentation: some TransferRepresentation {
+        // shouldAllowAccessingOriginalFile: true — bypass Photos transcoding and
+        // return the raw file directly. This avoids TransferableSupportError 0
+        // for formats (ProRes, Cinematic, screen recordings, etc.) that don't
+        // neatly map to any single declared UTType.
         FileRepresentation(contentType: .audiovisualContent,
+                           shouldAllowAccessingOriginalFile: true,
                            importing: { try Self(url: copyToTemp($0.file)) })
         FileRepresentation(contentType: .movie,
+                           shouldAllowAccessingOriginalFile: true,
                            importing: { try Self(url: copyToTemp($0.file)) })
         FileRepresentation(contentType: .quickTimeMovie,
+                           shouldAllowAccessingOriginalFile: true,
                            importing: { try Self(url: copyToTemp($0.file)) })
         FileRepresentation(contentType: .mpeg4Movie,
+                           shouldAllowAccessingOriginalFile: true,
                            importing: { try Self(url: copyToTemp($0.file)) })
     }
 }
