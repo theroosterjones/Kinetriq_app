@@ -7,19 +7,40 @@ import os.log
 
 private let logger = Logger(subsystem: "com.kevinjones.Kinetriq", category: "ExerciseView")
 
-/// Fallback Transferable wrapper so PhotosPicker can hand us a video file URL.
+/// Transferable wrapper so PhotosPicker can prepare and hand us a video file URL.
 ///
-/// Primary loading now uses `PHImageManager.requestAVAsset` because CoreTransferable
-/// can fail with `TransferableSupportError 0` for some Photos assets before the app
-/// gets a useful file URL. This fallback remains for picker items without a Photos
-/// local identifier.
+/// Important: `shouldAttemptToOpenInPlace` is intentionally `false`. Some Photos
+/// videos that previously loaded successfully fail when we ask for the original
+/// file in place; letting Photos prepare/copy the file is slower in rare cases but
+/// much more compatible.
 struct PickedMovie: Transferable {
     let url: URL
 
     static var transferRepresentation: some TransferRepresentation {
-        // iOS 26 SDK: only the full init is available. shouldAttemptToOpenInPlace: true
-        // tells Photos to hand us the original file directly rather than transcoding,
-        // which avoids TransferableSupportError 0 for HEVC, ProRes, and Cinematic videos.
+        FileRepresentation(contentType: .audiovisualContent,
+                           shouldAttemptToOpenInPlace: false,
+                           exporting: { SentTransferredFile($0.url) },
+                           importing: { try Self(url: copyToTemp($0.file)) })
+        FileRepresentation(contentType: .movie,
+                           shouldAttemptToOpenInPlace: false,
+                           exporting: { SentTransferredFile($0.url) },
+                           importing: { try Self(url: copyToTemp($0.file)) })
+        FileRepresentation(contentType: .quickTimeMovie,
+                           shouldAttemptToOpenInPlace: false,
+                           exporting: { SentTransferredFile($0.url) },
+                           importing: { try Self(url: copyToTemp($0.file)) })
+        FileRepresentation(contentType: .mpeg4Movie,
+                           shouldAttemptToOpenInPlace: false,
+                           exporting: { SentTransferredFile($0.url) },
+                           importing: { try Self(url: copyToTemp($0.file)) })
+    }
+}
+
+/// Last-resort wrapper asking Photos for the original file directly.
+struct OriginalPickedMovie: Transferable {
+    let url: URL
+
+    static var transferRepresentation: some TransferRepresentation {
         FileRepresentation(contentType: .audiovisualContent,
                            shouldAttemptToOpenInPlace: true,
                            exporting: { SentTransferredFile($0.url) },
@@ -88,26 +109,50 @@ private func loadVideoURL(
     from item: PhotosPickerItem,
     statusUpdate: @escaping @MainActor (String) -> Void
 ) async throws -> URL {
-    await statusUpdate("Accessing video from Photos...")
+    var failures: [String] = []
 
-    if let localIdentifier = item.itemIdentifier,
-       let url = try await loadVideoURLFromPhotosAsset(
-        localIdentifier: localIdentifier,
-        statusUpdate: statusUpdate
-       ) {
-        return url
-    }
-
+    // First try the most compatible path: let Photos prepare/copy the video.
+    // This is closest to the previous behavior that worked for the user's clips.
     await statusUpdate("Preparing video file...")
     do {
         if let movie = try await item.loadTransferable(type: PickedMovie.self) {
             return movie.url
         }
     } catch {
-        throw VideoLoadError.transferableFailed(error.localizedDescription)
+        failures.append("prepared file: \(error.localizedDescription)")
     }
 
-    throw VideoLoadError.noUsableFile
+    // Then try direct Photos asset access/export.
+    await statusUpdate("Accessing video from Photos...")
+    if let localIdentifier = item.itemIdentifier {
+        do {
+            if let url = try await loadVideoURLFromPhotosAsset(
+                localIdentifier: localIdentifier,
+                statusUpdate: statusUpdate
+            ) {
+                return url
+            }
+        } catch VideoLoadError.selectedItemNotVideo {
+            throw VideoLoadError.selectedItemNotVideo
+        } catch {
+            failures.append("Photos asset: \(error.localizedDescription)")
+        }
+    }
+
+    // Last resort: ask for the original in-place file.
+    await statusUpdate("Trying original video file...")
+    do {
+        if let movie = try await item.loadTransferable(type: OriginalPickedMovie.self) {
+            return movie.url
+        }
+    } catch {
+        failures.append("original file: \(error.localizedDescription)")
+    }
+
+    if failures.isEmpty {
+        throw VideoLoadError.noUsableFile
+    }
+    throw VideoLoadError.transferableFailed(failures.joined(separator: " | "))
 }
 
 private func loadVideoURLFromPhotosAsset(
