@@ -1,19 +1,18 @@
 import SwiftUI
 import PhotosUI
+import Photos
 import AVKit
 import UniformTypeIdentifiers
 import os.log
 
 private let logger = Logger(subsystem: "com.kevinjones.Kinetriq", category: "ExerciseView")
 
-/// Transferable wrapper so PhotosPicker can hand us a video file URL.
+/// Fallback Transferable wrapper so PhotosPicker can hand us a video file URL.
 ///
-/// Multiple FileRepresentations (importing only) are required because Photos may
-/// export videos under different UTTypes depending on format and iOS version.
-/// Using only .movie causes TransferableSupportError 0 for HEVC and some .mp4
-/// recordings. Each representation copies the file to a temp URL so it stays
-/// valid after the picker closes. NOTE: exporting closures are intentionally
-/// omitted — PhotosPicker only uses the importing pathway.
+/// Primary loading now uses `PHImageManager.requestAVAsset` because CoreTransferable
+/// can fail with `TransferableSupportError 0` for some Photos assets before the app
+/// gets a useful file URL. This fallback remains for picker items without a Photos
+/// local identifier.
 struct PickedMovie: Transferable {
     let url: URL
 
@@ -40,13 +39,148 @@ struct PickedMovie: Transferable {
     }
 }
 
+private enum VideoLoadError: LocalizedError {
+    case selectedItemNotVideo
+    case photosAssetUnavailable
+    case photosRequestCancelled
+    case photosRequestFailed(String)
+    case assetExportUnavailable
+    case assetExportFailed(String)
+    case transferableFailed(String)
+    case noUsableFile
+
+    var errorDescription: String? {
+        switch self {
+        case .selectedItemNotVideo:
+            return "The selected item does not appear to be a video. Please choose a video from Photos."
+        case .photosAssetUnavailable:
+            return "Kinetriq could not access that video from Photos. If the video is stored in iCloud, open it in Photos first so it downloads locally, then try again."
+        case .photosRequestCancelled:
+            return "The video load was cancelled by Photos. Please try selecting the video again."
+        case .photosRequestFailed(let details):
+            return "Photos could not prepare this video for analysis. \(details)"
+        case .assetExportUnavailable:
+            return "This video format could not be prepared for analysis on this device."
+        case .assetExportFailed(let details):
+            return "Kinetriq could not copy this video into a format it can analyze. \(details)"
+        case .transferableFailed(let details):
+            return "Photos could not provide a usable video file. \(details)"
+        case .noUsableFile:
+            return "Kinetriq could not load a usable video file. Try duplicating the video in Photos or exporting it as a regular video, then select the copy."
+        }
+    }
+}
+
 private func copyToTemp(_ file: URL) throws -> URL {
     let ext = file.pathExtension.isEmpty ? "mov" : file.pathExtension
     let dest = FileManager.default.temporaryDirectory
         .appendingPathComponent(UUID().uuidString)
         .appendingPathExtension(ext)
+    let scoped = file.startAccessingSecurityScopedResource()
+    defer {
+        if scoped { file.stopAccessingSecurityScopedResource() }
+    }
     try FileManager.default.copyItem(at: file, to: dest)
     return dest
+}
+
+private func loadVideoURL(from item: PhotosPickerItem) async throws -> URL {
+    if let localIdentifier = item.itemIdentifier,
+       let url = try await loadVideoURLFromPhotosAsset(localIdentifier: localIdentifier) {
+        return url
+    }
+
+    do {
+        if let movie = try await item.loadTransferable(type: PickedMovie.self) {
+            return movie.url
+        }
+    } catch {
+        throw VideoLoadError.transferableFailed(error.localizedDescription)
+    }
+
+    throw VideoLoadError.noUsableFile
+}
+
+private func loadVideoURLFromPhotosAsset(localIdentifier: String) async throws -> URL? {
+    try await withCheckedThrowingContinuation { continuation in
+        let results = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil)
+        guard let asset = results.firstObject else {
+            continuation.resume(returning: nil)
+            return
+        }
+
+        guard asset.mediaType == .video else {
+            continuation.resume(throwing: VideoLoadError.selectedItemNotVideo)
+            return
+        }
+
+        let options = PHVideoRequestOptions()
+        options.deliveryMode = .highQualityFormat
+        options.version = .current
+        options.isNetworkAccessAllowed = true
+
+        PHImageManager.default().requestAVAsset(forVideo: asset, options: options) { avAsset, _, info in
+            if let error = info?[PHImageErrorKey] as? Error {
+                continuation.resume(throwing: VideoLoadError.photosRequestFailed(error.localizedDescription))
+                return
+            }
+
+            if (info?[PHImageCancelledKey] as? Bool) == true {
+                continuation.resume(throwing: VideoLoadError.photosRequestCancelled)
+                return
+            }
+
+            guard let avAsset else {
+                continuation.resume(throwing: VideoLoadError.photosAssetUnavailable)
+                return
+            }
+
+            Task {
+                do {
+                    let url = try await temporaryVideoURL(from: avAsset)
+                    continuation.resume(returning: url)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+}
+
+private func temporaryVideoURL(from asset: AVAsset) async throws -> URL {
+    if let urlAsset = asset as? AVURLAsset {
+        return try copyToTemp(urlAsset.url)
+    }
+
+    guard let export = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetHighestQuality) else {
+        throw VideoLoadError.assetExportUnavailable
+    }
+
+    let outputURL = FileManager.default.temporaryDirectory
+        .appendingPathComponent(UUID().uuidString)
+        .appendingPathExtension("mov")
+    export.outputURL = outputURL
+    export.outputFileType = .mov
+    export.shouldOptimizeForNetworkUse = false
+
+    try await withCheckedThrowingContinuation { continuation in
+        export.exportAsynchronously {
+            switch export.status {
+            case .completed:
+                continuation.resume(returning: ())
+            case .cancelled:
+                continuation.resume(throwing: VideoLoadError.photosRequestCancelled)
+            case .failed:
+                continuation.resume(throwing: VideoLoadError.assetExportFailed(
+                    export.error?.localizedDescription ?? "Unknown export failure."
+                ))
+            default:
+                continuation.resume(throwing: VideoLoadError.assetExportFailed("Export ended with status \(export.status.rawValue)."))
+            }
+        }
+    }
+
+    return outputURL
 }
 
 private enum AnalysisMode: String, CaseIterable {
