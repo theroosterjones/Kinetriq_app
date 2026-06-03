@@ -37,6 +37,7 @@ final class PurchaseService: ObservableObject {
     /// TODO: Replace with your RevenueCat iOS API key from app.revenuecat.com
     /// Project Settings → API Keys → "App specific keys" → your iOS key (starts with "appl_")
     static let apiKey = "REVENUECAT_API_KEY_HERE"
+    private static let placeholderAPIKey = "REVENUECAT_API_KEY_HERE"
 
     // MARK: - Promo codes
 
@@ -49,6 +50,7 @@ final class PurchaseService: ObservableObject {
     ]
 
     private let promoCodeKey = "kinetriq_redeemed_promo"
+    private var isRevenueCatConfigured = false
 
     // MARK: - Init
 
@@ -57,8 +59,17 @@ final class PurchaseService: ObservableObject {
     // MARK: - Configuration
 
     func configure() {
+        guard Self.apiKey != Self.placeholderAPIKey else {
+            // Development mode until a real RevenueCat key is provided.
+            isProUser = true
+            isLoading = false
+            return
+        }
+
+        guard !isRevenueCatConfigured else { return }
         Purchases.logLevel = .warn
         Purchases.configure(withAPIKey: Self.apiKey)
+        isRevenueCatConfigured = true
         Task { await refreshStatus() }
     }
 
@@ -74,7 +85,7 @@ final class PurchaseService: ObservableObject {
             return
         }
 
-        guard Self.apiKey != "REVENUECAT_API_KEY_HERE" else {
+        guard Self.apiKey != Self.placeholderAPIKey else {
             // No API key yet — treat as unlocked so the app is testable during development
             isProUser = true
             return
@@ -92,7 +103,7 @@ final class PurchaseService: ObservableObject {
     // MARK: - Offerings (loads App Store products + pricing)
 
     func fetchOfferings() async {
-        guard Self.apiKey != "REVENUECAT_API_KEY_HERE" else { return }
+        guard Self.apiKey != Self.placeholderAPIKey else { return }
         do {
             offerings = try await Purchases.shared.offerings()
         } catch {
