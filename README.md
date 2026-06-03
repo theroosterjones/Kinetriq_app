@@ -2,7 +2,7 @@
 
 > **This is KevLines 3.0** — the public-launch evolution of the private [KevLines2.0](https://github.com/theroosterjones/KevLines2.0) research project. All core technology carries forward; this repo is the clean, user-facing branch.
 
-Kinetriq is a fully local iOS 17+ app that analyzes exercise form and movement quality using on-device AI pose estimation (MediaPipe). No server, no cloud, no subscription. Point your camera at yourself, pick a saved video, or run a movement screen — and get instant biomechanical feedback: joint angles, skeleton overlay, rep counts, tempo phases, and letter-graded assessments.
+Kinetriq is a fully local iOS 17+ app that analyzes exercise form and movement quality using on-device AI pose estimation (MediaPipe). No server and no cloud processing. Point your camera at yourself, pick a saved video, or run a movement screen — and get instant biomechanical feedback: joint angles, skeleton overlay, rep counts, tempo phases, and letter-graded assessments.
 
 ---
 
@@ -63,6 +63,19 @@ Letter-graded (A–F) sub-metrics with a "weakest-link" overall grade.
 - **Angles:** `worldLandmarks` + `AngleCalculator.angle3D`, 2D fallback; smoothed via `LandmarkSmoother` (1€ filter).
 - **Tempo direction:** `TempoTracker(invertPhases: true)` for pull/curl exercises (Row, Lat Pulldown, Elbow Curl) so that the working phase is always labeled "concentric."
 - **MediaPipe session reset:** `PoseLandmarkerService.resetForNewSession()` must be called before each saved-video analysis run to prevent 0% detection on second+ runs (timestamp monotonicity requirement).
+
+### Subscription branch notes
+
+Branch `feature/revenuecat-subscriptions` adds RevenueCat as the cross-platform subscription layer. Intended model:
+
+- Trial-only access: first week free through App Store subscription trial.
+- Paywall on app open when no active entitlement exists.
+- Single entitlement: `pro`.
+- Monthly and annual products planned in App Store Connect / RevenueCat.
+- Private offline promo codes exist for trainer/beta/press access.
+- Native App Store offer-code redemption is also available for real subscription offer codes.
+
+Until `Sources/Services/PurchaseService.swift` receives a real RevenueCat API key, development builds stay unlocked and skip RevenueCat configuration.
 
 ---
 

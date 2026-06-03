@@ -16,7 +16,7 @@ Use this file when picking up work on this repo. It summarizes architecture, con
 | Build number | `project.yml` → `CURRENT_PROJECT_VERSION` |
 | Xcode project | Generated — run **`xcodegen generate`** after editing `project.yml` |
 
-- Bundle id: `com.kevinjones.Kinetriq`
+- Bundle id: `com.kevinjones.KevLines2-0` (kept for App Store continuity)
 - Module name: `Kinetriq`
 - Test imports: `@testable import Kinetriq`
 - Xcode project: `Kinetriq.xcodeproj`
@@ -49,6 +49,18 @@ TabView (default: Home)
 Analyzers implement **`ExerciseAnalyzer`** or **`AssessmentAnalyzer`** (both conform to **`FrameAnalyzerProtocol`**).
 
 ## Critical implementation notes
+
+### Subscription branch
+
+Branch `feature/revenuecat-subscriptions` adds RevenueCat (`purchases-ios-spm`) for subscription gating:
+
+- `PurchaseService` is the single source of truth for subscription state.
+- Entitlement identifier: `pro`.
+- Paywall trigger: app open via `ContentView.fullScreenCover` when `isProUser == false`.
+- Trial model: configured in App Store Connect / RevenueCat products, not hardcoded in app logic.
+- Private promo codes are local/offline for trainer/beta/press access.
+- Native App Store offer-code redemption is exposed for production offer codes.
+- API key is still a placeholder; while placeholder is present, development builds stay unlocked and skip RevenueCat configuration.
 
 ### Saved-video decode orientation (do not regress)
 
@@ -130,4 +142,4 @@ All four tempo slots use **`.rounded(.down)`** so durations are never overstated
 - [ ] Additional exercises
 - [ ] Export analysis summary
 
-Last updated: **Kinetriq 3.4.0** build **20**.
+Last updated: **Kinetriq 3.4.2** build **24** plus RevenueCat subscription feature branch notes.
