@@ -84,12 +84,21 @@ private func copyToTemp(_ file: URL) throws -> URL {
     return dest
 }
 
-private func loadVideoURL(from item: PhotosPickerItem) async throws -> URL {
+private func loadVideoURL(
+    from item: PhotosPickerItem,
+    statusUpdate: @escaping @MainActor (String) -> Void
+) async throws -> URL {
+    await statusUpdate("Accessing video from Photos...")
+
     if let localIdentifier = item.itemIdentifier,
-       let url = try await loadVideoURLFromPhotosAsset(localIdentifier: localIdentifier) {
+       let url = try await loadVideoURLFromPhotosAsset(
+        localIdentifier: localIdentifier,
+        statusUpdate: statusUpdate
+       ) {
         return url
     }
 
+    await statusUpdate("Preparing video file...")
     do {
         if let movie = try await item.loadTransferable(type: PickedMovie.self) {
             return movie.url
@@ -101,7 +110,10 @@ private func loadVideoURL(from item: PhotosPickerItem) async throws -> URL {
     throw VideoLoadError.noUsableFile
 }
 
-private func loadVideoURLFromPhotosAsset(localIdentifier: String) async throws -> URL? {
+private func loadVideoURLFromPhotosAsset(
+    localIdentifier: String,
+    statusUpdate: @escaping @MainActor (String) -> Void
+) async throws -> URL? {
     try await withCheckedThrowingContinuation { continuation in
         let results = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil)
         guard let asset = results.firstObject else {
@@ -137,7 +149,7 @@ private func loadVideoURLFromPhotosAsset(localIdentifier: String) async throws -
 
             Task {
                 do {
-                    let url = try await temporaryVideoURL(from: avAsset)
+                    let url = try await temporaryVideoURL(from: avAsset, statusUpdate: statusUpdate)
                     continuation.resume(returning: url)
                 } catch {
                     continuation.resume(throwing: error)
@@ -147,11 +159,16 @@ private func loadVideoURLFromPhotosAsset(localIdentifier: String) async throws -
     }
 }
 
-private func temporaryVideoURL(from asset: AVAsset) async throws -> URL {
+private func temporaryVideoURL(
+    from asset: AVAsset,
+    statusUpdate: @escaping @MainActor (String) -> Void
+) async throws -> URL {
     if let urlAsset = asset as? AVURLAsset {
+        await statusUpdate("Copying video for analysis...")
         return try copyToTemp(urlAsset.url)
     }
 
+    await statusUpdate("Preparing video for analysis...")
     guard let export = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetHighestQuality) else {
         throw VideoLoadError.assetExportUnavailable
     }
@@ -207,6 +224,7 @@ struct ExerciseView: View {
     @State private var assessmentMetrics: AssessmentMetrics?
     @State private var player: AVPlayer?
     @State private var isLoadingSelectedVideo = false
+    @State private var videoLoadingStatus = "Loading video..."
 
     @State private var showingError = false
     @State private var errorMessage = ""
@@ -425,7 +443,7 @@ struct ExerciseView: View {
         if isLoadingSelectedVideo {
             HStack(spacing: 10) {
                 ProgressView()
-                Text("Loading video...")
+                Text(videoLoadingStatus)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -640,6 +658,7 @@ struct ExerciseView: View {
     private func loadVideo(from item: PhotosPickerItem?) async {
         await MainActor.run {
             isLoadingSelectedVideo = true
+            videoLoadingStatus = "Accessing video from Photos..."
             // Clear previous selection/results so state reflects current loading operation.
             selectedVideoURL = nil
             analyzedVideoURL = nil
@@ -659,18 +678,14 @@ struct ExerciseView: View {
         }
 
         do {
-            guard let movie = try await item.loadTransferable(type: PickedMovie.self) else {
-                await MainActor.run {
-                    errorMessage = "Could not load video from Photos."
-                    showingError = true
-                }
-                return
+            let url = try await loadVideoURL(from: item) { status in
+                videoLoadingStatus = status
             }
             await MainActor.run {
-                selectedVideoURL = movie.url
+                selectedVideoURL = url
                 analyzedVideoURL = nil
                 analysisSummary = nil
-                player = AVPlayer(url: movie.url)
+                player = AVPlayer(url: url)
             }
         } catch {
             await MainActor.run {
