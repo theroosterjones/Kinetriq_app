@@ -57,7 +57,7 @@ final class PurchaseService: ObservableObject {
     // MARK: - Configuration
 
     func configure() {
-        Purchases.logLevel = .warning
+        Purchases.logLevel = .warn
         Purchases.configure(withAPIKey: Self.apiKey)
         Task { await refreshStatus() }
     }
