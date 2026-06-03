@@ -1,5 +1,6 @@
 import Foundation
 import RevenueCat
+import StoreKit
 
 /// Central subscription service wrapping RevenueCat.
 ///
@@ -154,5 +155,16 @@ final class PurchaseService: ObservableObject {
 
     func redeemedPromoCode() -> String? {
         UserDefaults.standard.string(forKey: promoCodeKey)
+    }
+
+    // MARK: - App Store offer codes
+
+    /// Presents Apple's native offer-code redemption sheet.
+    ///
+    /// Use this for real App Store subscription offer codes configured in
+    /// App Store Connect. RevenueCat will reflect the resulting entitlement
+    /// after the App Store processes the redemption.
+    func presentAppStoreOfferCodeRedemption() {
+        SKPaymentQueue.default().presentCodeRedemptionSheet()
     }
 }

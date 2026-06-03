@@ -141,6 +141,15 @@ struct SettingsView: View {
 
                 Button("Have a promo code?") { showPromoCode = true }
                     .foregroundStyle(.cyan)
+
+                Button("Redeem App Store Offer Code") {
+                    purchases.presentAppStoreOfferCodeRedemption()
+                    Task {
+                        try? await Task.sleep(nanoseconds: 2_000_000_000)
+                        await purchases.refreshStatus()
+                    }
+                }
+                .foregroundStyle(.cyan)
             }
         }
     }

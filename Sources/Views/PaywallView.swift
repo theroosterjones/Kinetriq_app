@@ -162,6 +162,16 @@ struct PaywallView: View {
             Button("Have a promo code?") { showPromoCode = true }
                 .font(.footnote)
                 .foregroundStyle(.cyan)
+
+            Button("Redeem App Store Offer Code") {
+                service.presentAppStoreOfferCodeRedemption()
+                Task {
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    await service.refreshStatus()
+                }
+            }
+            .font(.footnote)
+            .foregroundStyle(.cyan)
         }
     }
 
