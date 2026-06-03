@@ -1,17 +1,77 @@
 import SwiftUI
 import RevenueCat
+import RevenueCatUI
 
 struct PaywallView: View {
     @ObservedObject private var service = PurchaseService.shared
-    @State private var selectedPlan: PlanType = .annual
+    @State private var selectedPlan: PlanType = .yearly
     @State private var isPurchasing = false
     @State private var isRestoring = false
     @State private var showPromoCode = false
     @State private var errorMessage: String?
 
-    enum PlanType { case monthly, annual }
+    enum PlanType { case monthly, yearly }
 
     var body: some View {
+        if service.hasConfiguredAPIKey {
+            revenueCatPaywall
+        } else {
+            fallbackPaywall
+        }
+    }
+
+    private var revenueCatPaywall: some View {
+        ZStack(alignment: .topTrailing) {
+            RevenueCatUI.PaywallView(displayCloseButton: false)
+                .onPurchaseCompleted { customerInfo in
+                    service.updateSubscriptionStatus(from: customerInfo)
+                }
+                .onRestoreCompleted { customerInfo in
+                    service.updateSubscriptionStatus(from: customerInfo)
+                }
+                .onPurchaseFailure { error in
+                    errorMessage = error.localizedDescription
+                }
+                .onRestoreFailure { error in
+                    errorMessage = error.localizedDescription
+                }
+
+            accessOptionsMenu
+                .padding(.top, 16)
+                .padding(.trailing, 16)
+        }
+        .sheet(isPresented: $showPromoCode) { PromoCodeView() }
+        .alert("Something went wrong", isPresented: .init(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("OK") { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "")
+        }
+    }
+
+    private var accessOptionsMenu: some View {
+        Menu {
+            Button("Enter Private Promo Code") { showPromoCode = true }
+            Button("Redeem App Store Offer Code") {
+                service.presentAppStoreOfferCodeRedemption()
+                Task {
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    await service.refreshStatus()
+                }
+            }
+        } label: {
+            Label("Access Options", systemImage: "ellipsis.circle")
+                .font(.footnote.bold())
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(.ultraThinMaterial)
+                .clipShape(Capsule())
+        }
+    }
+
+    private var fallbackPaywall: some View {
         ZStack {
             LinearGradient(
                 colors: [Color.black, Color(white: 0.07)],
@@ -87,11 +147,11 @@ struct PaywallView: View {
             )
             PlanCard(
                 title: "Annual",
-                price: annualPrice,
+                price: yearlyPrice,
                 perUnit: "/ year",
                 badge: "Best Value",
-                isSelected: selectedPlan == .annual,
-                onTap: { selectedPlan = .annual }
+                isSelected: selectedPlan == .yearly,
+                onTap: { selectedPlan = .yearly }
             )
         }
     }
@@ -188,17 +248,27 @@ struct PaywallView: View {
     private var selectedPackage: Package? {
         let current = service.offerings?.current
         switch selectedPlan {
-        case .monthly: return current?.monthly
-        case .annual:  return current?.annual
+        case .monthly:
+            return package(productID: PurchaseService.monthlyProductID) ?? current?.monthly
+        case .yearly:
+            return package(productID: PurchaseService.yearlyProductID) ?? current?.annual
+        }
+    }
+
+    private func package(productID: String) -> Package? {
+        service.offerings?.current?.availablePackages.first {
+            $0.storeProduct.productIdentifier == productID || $0.identifier == productID
         }
     }
 
     private var monthlyPrice: String {
-        service.offerings?.current?.monthly?.localizedPriceString ?? "—"
+        (package(productID: PurchaseService.monthlyProductID) ?? service.offerings?.current?.monthly)?
+            .localizedPriceString ?? "—"
     }
 
-    private var annualPrice: String {
-        service.offerings?.current?.annual?.localizedPriceString ?? "—"
+    private var yearlyPrice: String {
+        (package(productID: PurchaseService.yearlyProductID) ?? service.offerings?.current?.annual)?
+            .localizedPriceString ?? "—"
     }
 }
 

@@ -108,6 +108,8 @@ targets:
         product: SwiftTasksVision
       - package: RevenueCat
         product: RevenueCat
+      - package: RevenueCat
+        product: RevenueCatUI
 
   KinetriqTests:
     type: bundle.unit-test

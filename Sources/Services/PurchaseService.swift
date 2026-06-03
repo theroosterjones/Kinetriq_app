@@ -7,12 +7,11 @@ import StoreKit
 /// Setup checklist (one-time, before shipping):
 ///   1. Create a free account at https://app.revenuecat.com
 ///   2. Add your iOS app (bundle ID: com.kevinjones.KevLines2-0)
-///   3. Create one entitlement with identifier "pro"
+///   3. Create one entitlement named/identified "Kinetriq Pro"
 ///   4. Create two subscription products in App Store Connect:
-///        • com.kevinjones.kinetriq.monthly  — 7-day free trial
-///        • com.kevinjones.kinetriq.annual   — 7-day free trial
-///   5. Attach both products to the "pro" entitlement in RevenueCat
-///   6. Replace apiKey below with your key from RC → Project Settings → API Keys
+///        • monthly — 7-day free trial
+///        • yearly  — 7-day free trial
+///   5. Attach both products to the "Kinetriq Pro" entitlement in RevenueCat
 ///
 /// Promo codes:
 ///   Add codes to `validPromoCodes`. Codes are stored in the app binary —
@@ -26,18 +25,24 @@ final class PurchaseService: ObservableObject {
     // MARK: - Published state
 
     @Published var isProUser: Bool = false
+    @Published var customerInfo: CustomerInfo? = nil
     @Published var offerings: Offerings? = nil
     @Published var isLoading: Bool = true
     @Published var purchaseError: String? = nil
 
     // MARK: - Constants
 
-    /// RevenueCat entitlement identifier. Must match what you create in the RC dashboard.
-    static let entitlementID = "pro"
+    /// Primary RevenueCat entitlement identifier. Must match the RevenueCat dashboard.
+    static let entitlementID = "Kinetriq Pro"
 
-    /// TODO: Replace with your RevenueCat iOS API key from app.revenuecat.com
-    /// Project Settings → API Keys → "App specific keys" → your iOS key (starts with "appl_")
-    static let apiKey = "REVENUECAT_API_KEY_HERE"
+    /// Backward-compatible accepted entitlement identifiers while the dashboard setup is being finalized.
+    private static let acceptedEntitlementIDs = ["Kinetriq Pro", "pro"]
+
+    static let monthlyProductID = "monthly"
+    static let yearlyProductID = "yearly"
+
+    /// RevenueCat public SDK API key for the Kinetriq project.
+    static let apiKey = "test_XThbuzBuYTjDTmgSbflRaPedBiT"
     private static let placeholderAPIKey = "REVENUECAT_API_KEY_HERE"
 
     // MARK: - Promo codes
@@ -57,10 +62,14 @@ final class PurchaseService: ObservableObject {
 
     private init() {}
 
+    var hasConfiguredAPIKey: Bool {
+        Self.apiKey != Self.placeholderAPIKey
+    }
+
     // MARK: - Configuration
 
     func configure() {
-        guard Self.apiKey != Self.placeholderAPIKey else {
+        guard hasConfiguredAPIKey else {
             // Development mode until a real RevenueCat key is provided.
             isProUser = true
             isLoading = false
@@ -86,7 +95,7 @@ final class PurchaseService: ObservableObject {
             return
         }
 
-        guard Self.apiKey != Self.placeholderAPIKey else {
+        guard hasConfiguredAPIKey else {
             // No API key yet — treat as unlocked so the app is testable during development
             isProUser = true
             return
@@ -94,7 +103,7 @@ final class PurchaseService: ObservableObject {
 
         do {
             let info = try await Purchases.shared.customerInfo()
-            isProUser = info.entitlements[Self.entitlementID]?.isActive == true
+            updateSubscriptionStatus(from: info)
         } catch {
             // Network unavailable — keep previous state rather than locking the user out
             isProUser = false
@@ -104,7 +113,7 @@ final class PurchaseService: ObservableObject {
     // MARK: - Offerings (loads App Store products + pricing)
 
     func fetchOfferings() async {
-        guard Self.apiKey != Self.placeholderAPIKey else { return }
+        guard hasConfiguredAPIKey else { return }
         do {
             offerings = try await Purchases.shared.offerings()
         } catch {
@@ -116,16 +125,23 @@ final class PurchaseService: ObservableObject {
 
     func purchase(_ package: Package) async throws {
         let result = try await Purchases.shared.purchase(package: package)
-        isProUser = result.customerInfo.entitlements[Self.entitlementID]?.isActive == true
+        updateSubscriptionStatus(from: result.customerInfo)
     }
 
     // MARK: - Restore
 
     func restorePurchases() async throws {
         let info = try await Purchases.shared.restorePurchases()
-        isProUser = info.entitlements[Self.entitlementID]?.isActive == true
+        updateSubscriptionStatus(from: info)
         if !isProUser {
             throw RestoreError.noPurchasesFound
+        }
+    }
+
+    func updateSubscriptionStatus(from info: CustomerInfo) {
+        customerInfo = info
+        isProUser = Self.acceptedEntitlementIDs.contains { entitlementID in
+            info.entitlements[entitlementID]?.isActive == true
         }
     }
 

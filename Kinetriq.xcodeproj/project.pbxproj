@@ -10,6 +10,7 @@
 		0139FB3FDD13D6E31F9FD10B /* ExerciseAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5E3E2E91BF8C07CBEEB396D /* ExerciseAnalyzer.swift */; };
 		0925D8F315C11DE8287A1568 /* SpineOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D26C63D939C71A3D6F454B5 /* SpineOverlay.swift */; };
 		0A480997AF524E9EA273B770 /* AngleCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC043707BEC87AA5C2BCA58E /* AngleCalculator.swift */; };
+		1152EFE6F6A8AF459C922E43 /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 056500C0CF823AE5989F949C /* RevenueCatUI */; };
 		1517038D6A36C0AF01D4F6D6 /* LatPulldownAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBD0C1D25B50B700C2A4DDB8 /* LatPulldownAnalyzer.swift */; };
 		155B378C89E387C24E936775 /* AssessmentAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BDFDE5807DB7517EDE91EBA /* AssessmentAnalyzer.swift */; };
 		16299A2BCE574E6DA3CE926C /* RowAnalyzerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B2E66D6799B760A5A86798E /* RowAnalyzerTests.swift */; };
@@ -145,6 +146,7 @@
 			files = (
 				787323B59E3BE8AE1850D42A /* SwiftTasksVision in Frameworks */,
 				D4C42B9CE1757E68A10537A2 /* RevenueCat in Frameworks */,
+				1152EFE6F6A8AF459C922E43 /* RevenueCatUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -372,6 +374,7 @@
 			packageProductDependencies = (
 				F7656B3F65336A267267C2C3 /* SwiftTasksVision */,
 				4C463246C9939DA2C4B4D71D /* RevenueCat */,
+				056500C0CF823AE5989F949C /* RevenueCatUI */,
 			);
 			productName = Kinetriq;
 			productReference = EE7DFA37B0CFE9CA55A0E391 /* Kinetriq.app */;
@@ -822,6 +825,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		056500C0CF823AE5989F949C /* RevenueCatUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B895F24F8BD1F12AAE905E1E /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCatUI;
+		};
 		4C463246C9939DA2C4B4D71D /* RevenueCat */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = B895F24F8BD1F12AAE905E1E /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;

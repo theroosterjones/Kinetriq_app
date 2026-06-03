@@ -1,4 +1,5 @@
 import SwiftUI
+import RevenueCatUI
 
 struct SettingsView: View {
     @ObservedObject private var purchases = PurchaseService.shared
@@ -120,6 +121,20 @@ struct SettingsView: View {
                     }
                 }
                 .foregroundStyle(.blue)
+
+                if purchases.hasConfiguredAPIKey {
+                    NavigationLink {
+                        CustomerCenterView(
+                            navigationOptions: CustomerCenterNavigationOptions(
+                                usesNavigationStack: false,
+                                usesExistingNavigation: true,
+                                shouldShowCloseButton: false
+                            )
+                        )
+                    } label: {
+                        Label("Customer Center", systemImage: "person.crop.circle")
+                    }
+                }
             } else {
                 HStack {
                     Label("No active subscription", systemImage: "xmark.circle")
@@ -150,6 +165,20 @@ struct SettingsView: View {
                     }
                 }
                 .foregroundStyle(.cyan)
+
+                if purchases.hasConfiguredAPIKey {
+                    NavigationLink {
+                        CustomerCenterView(
+                            navigationOptions: CustomerCenterNavigationOptions(
+                                usesNavigationStack: false,
+                                usesExistingNavigation: true,
+                                shouldShowCloseButton: false
+                            )
+                        )
+                    } label: {
+                        Label("Customer Center", systemImage: "person.crop.circle")
+                    }
+                }
             }
         }
     }
