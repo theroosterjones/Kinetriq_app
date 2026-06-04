@@ -95,7 +95,7 @@ open Kinetriq.xcodeproj
 - **Angle measurement clarified** — hip angle continues to use shoulder→hip→knee (spine-line vs femur-line, 3D world landmarks preferred). No calculation change; thresholds were the only issue.
 - **Extended reference lines** — thin yellow lines now extend the spine vector and femur vector beyond the hip joint, visually confirming the measured angle on-screen. Vertical plumb line retained.
 - **Saved-video import regression fixed** — restored Photos-prepared video import as the primary load path. Do not make `shouldAttemptToOpenInPlace: true` the first path again; it caused `TransferableSupportError 0` for multiple Photos videos that previously uploaded. The safe order is: Photos-prepared file import → direct `PHAsset` / `AVAsset` fallback → original-file-in-place fallback.
-- **Marketing / build** — `3.4.2` (25).
+- **Marketing / build** — `3.4.2` (26).
 
 ### v3.4.1 — Video loading fix
 

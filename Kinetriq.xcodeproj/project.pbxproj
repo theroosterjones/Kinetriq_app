@@ -86,7 +86,7 @@
 		3BDFDE5807DB7517EDE91EBA /* AssessmentAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssessmentAnalyzer.swift; sourceTree = "<group>"; };
 		40CDA404091BD32E105DCE6B /* DeadliftAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeadliftAnalyzer.swift; sourceTree = "<group>"; };
 		431A75A8F8FBF0C0B0EC06AF /* MetalCameraRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalCameraRenderer.swift; sourceTree = "<group>"; };
-		4498B3BE6F00ABF7A99AEFBF /* pose_landmarker_full.task */ = {isa = PBXFileReference; path = pose_landmarker_full.task; sourceTree = "<group>"; };
+		4498B3BE6F00ABF7A99AEFBF /* pose_landmarker_full.task */ = {isa = PBXFileReference; lastKnownFileType = file; path = pose_landmarker_full.task; sourceTree = "<group>"; };
 		47093B0CA25AA10D9579CB4B /* RepCounterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepCounterTests.swift; sourceTree = "<group>"; };
 		4E64FD879DE7A1E4EDD9CFDF /* OverlayRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayRenderer.swift; sourceTree = "<group>"; };
 		4F02E144E6C4577287121AA9 /* ElbowAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElbowAnalyzer.swift; sourceTree = "<group>"; };
@@ -125,7 +125,7 @@
 		DA76761A200D74E0AB0718BD /* RepMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepMetrics.swift; sourceTree = "<group>"; };
 		DCC874CC73FA43ACF9DAF577 /* AngleCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AngleCalculatorTests.swift; sourceTree = "<group>"; };
 		DDE3D928D58F055BD19F345F /* AnalysisResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisResult.swift; sourceTree = "<group>"; };
-		EE7DFA37B0CFE9CA55A0E391 /* Kinetriq.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Kinetriq.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		EE7DFA37B0CFE9CA55A0E391 /* Kinetriq.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Kinetriq.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FBD0C1D25B50B700C2A4DDB8 /* LatPulldownAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LatPulldownAnalyzer.swift; sourceTree = "<group>"; };
 		FDCD651FA2225CF12802BE0A /* SquatAssessmentAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SquatAssessmentAnalyzer.swift; sourceTree = "<group>"; };
 		FFE1BA99EBE8C4A2561A88C4 /* RepMetricsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepMetricsTests.swift; sourceTree = "<group>"; };
@@ -383,8 +383,6 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1500;
-				TargetAttributes = {
-				};
 			};
 			buildConfigurationList = 5F7C51AD78DCEF58986587D5 /* Build configuration list for PBXProject "Kinetriq" */;
 			developmentRegion = en;
@@ -438,7 +436,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Locate the embedded framework plist — path differs between Debug and Archive builds.\nEMBEDDED_PLIST=\"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/MediaPipeTasksVision.framework/Info.plist\"\nif [ ! -f \"$EMBEDDED_PLIST\" ]; then\n  EMBEDDED_PLIST=\"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/MediaPipeTasksVision.framework/Info.plist\"\nfi\nif [ ! -f \"$EMBEDDED_PLIST\" ]; then\n  echo \"MediaPipeTasksVision Info.plist not found — skipping patch\"\n  exit 0\nfi\n\n# Use build-setting variables with hardcoded fallbacks in case they are not\n# exported into the script environment during Archive / Distribution builds.\nMIN_OS=\"${IPHONEOS_DEPLOYMENT_TARGET:-17.0}\"\nVERSION=\"${MARKETING_VERSION:-3.4.2}\"\nBUILD=\"${CURRENT_PROJECT_VERSION:-25}\"\n\nset_or_add() {\n  local key=\"$1\" val=\"$2\" plist=\"$3\"\n  /usr/libexec/PlistBuddy -c \"Set :${key} ${val}\" \"$plist\" >/dev/null 2>&1 || \\\n  /usr/libexec/PlistBuddy -c \"Add :${key} string ${val}\" \"$plist\"\n}\n\n/usr/libexec/PlistBuddy -c \"Delete :AvailableLibraries\"    \"$EMBEDDED_PLIST\" >/dev/null 2>&1 || true\n/usr/libexec/PlistBuddy -c \"Delete :XCFrameworkFormatVersion\" \"$EMBEDDED_PLIST\" >/dev/null 2>&1 || true\n\nset_or_add \"MinimumOSVersion\"       \"$MIN_OS\"  \"$EMBEDDED_PLIST\"\nset_or_add \"CFBundleShortVersionString\" \"$VERSION\" \"$EMBEDDED_PLIST\"\nset_or_add \"CFBundleVersion\"        \"$BUILD\"   \"$EMBEDDED_PLIST\"\nset_or_add \"CFBundlePackageType\"    \"FMWK\"     \"$EMBEDDED_PLIST\"\n\necho \"Patched $EMBEDDED_PLIST — MinOS=$MIN_OS version=$VERSION build=$BUILD\"\n";
+			shellScript = "# Locate the embedded framework plist — path differs between Debug and Archive builds.\nEMBEDDED_PLIST=\"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/MediaPipeTasksVision.framework/Info.plist\"\nif [ ! -f \"$EMBEDDED_PLIST\" ]; then\n  EMBEDDED_PLIST=\"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/MediaPipeTasksVision.framework/Info.plist\"\nfi\nif [ ! -f \"$EMBEDDED_PLIST\" ]; then\n  echo \"MediaPipeTasksVision Info.plist not found — skipping patch\"\n  exit 0\nfi\n\n# Use build-setting variables with hardcoded fallbacks in case they are not\n# exported into the script environment during Archive / Distribution builds.\nMIN_OS=\"${IPHONEOS_DEPLOYMENT_TARGET:-17.0}\"\nVERSION=\"${MARKETING_VERSION:-3.4.2}\"\nBUILD=\"${CURRENT_PROJECT_VERSION:-26}\"\n\nset_or_add() {\n  local key=\"$1\" val=\"$2\" plist=\"$3\"\n  /usr/libexec/PlistBuddy -c \"Set :${key} ${val}\" \"$plist\" >/dev/null 2>&1 || \\\n  /usr/libexec/PlistBuddy -c \"Add :${key} string ${val}\" \"$plist\"\n}\n\n/usr/libexec/PlistBuddy -c \"Delete :AvailableLibraries\"    \"$EMBEDDED_PLIST\" >/dev/null 2>&1 || true\n/usr/libexec/PlistBuddy -c \"Delete :XCFrameworkFormatVersion\" \"$EMBEDDED_PLIST\" >/dev/null 2>&1 || true\n\nset_or_add \"MinimumOSVersion\"       \"$MIN_OS\"  \"$EMBEDDED_PLIST\"\nset_or_add \"CFBundleShortVersionString\" \"$VERSION\" \"$EMBEDDED_PLIST\"\nset_or_add \"CFBundleVersion\"        \"$BUILD\"   \"$EMBEDDED_PLIST\"\nset_or_add \"CFBundlePackageType\"    \"FMWK\"     \"$EMBEDDED_PLIST\"\n\necho \"Patched $EMBEDDED_PLIST — MinOS=$MIN_OS version=$VERSION build=$BUILD\"\n";
 		};
 		8A5752A2314D83C39A844B71 /* Patch MediaPipe framework plist for App Store validation */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -456,7 +454,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "DERIVED_DATA_ROOT=\"${BUILD_DIR%/Build/*}\"\nIOS_PLIST=\"${DERIVED_DATA_ROOT}/SourcePackages/checkouts/SwiftTasksVision/Dependencies/MediaPipeTasksVision.xcframework/ios-arm64/MediaPipeTasksVision.framework/Info.plist\"\nSIM_PLIST=\"${DERIVED_DATA_ROOT}/SourcePackages/checkouts/SwiftTasksVision/Dependencies/MediaPipeTasksVision.xcframework/ios-arm64_x86_64-simulator/MediaPipeTasksVision.framework/Info.plist\"\n\nMIN_OS=\"${IPHONEOS_DEPLOYMENT_TARGET:-17.0}\"\nVERSION=\"${MARKETING_VERSION:-3.4.2}\"\nBUILD=\"${CURRENT_PROJECT_VERSION:-25}\"\n\nset_or_add() {\n  local key=\"$1\" val=\"$2\" plist=\"$3\"\n  /usr/libexec/PlistBuddy -c \"Set :${key} ${val}\" \"$plist\" >/dev/null 2>&1 || \\\n  /usr/libexec/PlistBuddy -c \"Add :${key} string ${val}\" \"$plist\"\n}\n\npatch_plist() {\n  plist_path=\"$1\"\n  if [ ! -f \"$plist_path\" ]; then\n    return 0\n  fi\n  set_or_add \"MinimumOSVersion\"          \"$MIN_OS\"  \"$plist_path\"\n  set_or_add \"CFBundleShortVersionString\" \"$VERSION\" \"$plist_path\"\n  set_or_add \"CFBundleVersion\"            \"$BUILD\"   \"$plist_path\"\n  echo \"Pre-build patched $plist_path\"\n}\n\npatch_plist \"$IOS_PLIST\"\npatch_plist \"$SIM_PLIST\"\n";
+			shellScript = "DERIVED_DATA_ROOT=\"${BUILD_DIR%/Build/*}\"\nIOS_PLIST=\"${DERIVED_DATA_ROOT}/SourcePackages/checkouts/SwiftTasksVision/Dependencies/MediaPipeTasksVision.xcframework/ios-arm64/MediaPipeTasksVision.framework/Info.plist\"\nSIM_PLIST=\"${DERIVED_DATA_ROOT}/SourcePackages/checkouts/SwiftTasksVision/Dependencies/MediaPipeTasksVision.xcframework/ios-arm64_x86_64-simulator/MediaPipeTasksVision.framework/Info.plist\"\n\nMIN_OS=\"${IPHONEOS_DEPLOYMENT_TARGET:-17.0}\"\nVERSION=\"${MARKETING_VERSION:-3.4.2}\"\nBUILD=\"${CURRENT_PROJECT_VERSION:-26}\"\n\nset_or_add() {\n  local key=\"$1\" val=\"$2\" plist=\"$3\"\n  /usr/libexec/PlistBuddy -c \"Set :${key} ${val}\" \"$plist\" >/dev/null 2>&1 || \\\n  /usr/libexec/PlistBuddy -c \"Add :${key} string ${val}\" \"$plist\"\n}\n\npatch_plist() {\n  plist_path=\"$1\"\n  if [ ! -f \"$plist_path\" ]; then\n    return 0\n  fi\n  set_or_add \"MinimumOSVersion\"          \"$MIN_OS\"  \"$plist_path\"\n  set_or_add \"CFBundleShortVersionString\" \"$VERSION\" \"$plist_path\"\n  set_or_add \"CFBundleVersion\"            \"$BUILD\"   \"$plist_path\"\n  echo \"Pre-build patched $plist_path\"\n}\n\npatch_plist \"$IOS_PLIST\"\npatch_plist \"$SIM_PLIST\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -542,7 +540,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 25;
+				CURRENT_PROJECT_VERSION = 26;
+				DEVELOPMENT_TEAM = YCKQ2HTCQ3;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Kinetriq;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Kinetriq uses your camera for real-time exercise form analysis with skeleton overlay.";
@@ -661,7 +660,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 25;
+				CURRENT_PROJECT_VERSION = 26;
+				DEVELOPMENT_TEAM = YCKQ2HTCQ3;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Kinetriq;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Kinetriq uses your camera for real-time exercise form analysis with skeleton overlay.";
