@@ -410,8 +410,8 @@ struct LiveAnalysisView: View {
                     }
                 } else {
                     Picker("Exercise", selection: $selectedExerciseType) {
-                        ForEach(ExerciseType.allCases) { type in
-                            Text(type.rawValue).tag(type)
+                        ForEach(ExerciseConfig.all, id: \.type) { exercise in
+                            Text(exercise.displayName).tag(exercise.type)
                         }
                     }
                     .pickerStyle(.menu)

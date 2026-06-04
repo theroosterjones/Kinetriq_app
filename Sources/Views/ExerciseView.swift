@@ -383,8 +383,8 @@ struct ExerciseView: View {
     private var exerciseOrAssessmentPicker: some View {
         if analysisCategory == .exercise {
             Picker("Exercise", selection: $selectedExerciseType) {
-                ForEach(ExerciseType.allCases) { type in
-                    Text(type.rawValue).tag(type)
+                ForEach(ExerciseConfig.all, id: \.type) { exercise in
+                    Text(exercise.displayName).tag(exercise.type)
                 }
             }
             .pickerStyle(.menu)
