@@ -4,14 +4,15 @@ import StoreKit
 
 /// Central subscription service wrapping RevenueCat.
 ///
-/// Setup checklist (one-time, before shipping):
+/// Setup checklist (one-time, before shipping) — full guide: docs/Subscriptions.md
 ///   1. Create a free account at https://app.revenuecat.com
 ///   2. Add your iOS app (bundle ID: com.kevinjones.KevLines2-0)
 ///   3. Create one entitlement named/identified "Kinetriq Pro"
-///   4. Create two subscription products in App Store Connect:
-///        • monthly — 7-day free trial
-///        • yearly  — 7-day free trial
-///   5. Attach both products to the "Kinetriq Pro" entitlement in RevenueCat
+///   4. Create two subscription products in App Store Connect (same group):
+///        • monthly — $4.99/mo, 7-day free trial
+///        • yearly  — $34.99/yr, 7-day free trial (~42% off vs monthly)
+///   5. RevenueCat: attach both products to "Kinetriq Pro"; set Offering `default` current
+///   6. Android / web later: same entitlement, platform-specific products (see Subscriptions.md)
 ///
 /// Promo codes:
 ///   Add codes to `validPromoCodes`. Codes are stored in the app binary —

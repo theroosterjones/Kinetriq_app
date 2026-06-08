@@ -6,7 +6,8 @@ Supplements the main [README](../README.md). Start here for deep topics or AI/ag
 |----------|-------------|
 | [VideoOrientation.md](VideoOrientation.md) | **Saved-video decode & export orientation** — why Core Image + `preferredTransform` failed; why **AVMutableVideoComposition** + **AVAssetReaderVideoCompositionOutput** (v3.3.2+) is required; regression history; sanity checks. **Read before changing `VideoReader` or export dimensions.** |
 | [Troubleshooting.md](Troubleshooting.md) | **Open issues & investigation goals** — version-stamped (e.g. v3.3.2): squat/hinge overlays on exported assessments, saved-video Row/Deadlift crashes; mitigations and next steps. |
-| [Subscriptions.md](Subscriptions.md) | **RevenueCat setup** — subscription entitlement/product setup, paywall/customer-center implementation notes, promo/offer-code paths, and testing checklist. |
+| [Subscriptions.md](Subscriptions.md) | **RevenueCat setup** — $4.99/mo + $34.99/yr (7-day trial), ASC/RC/Play/web checklists, Sandbox testing. |
+| [monetization/Monetization-Review.md](monetization/Monetization-Review.md) | **Pricing research** — competitor apps/prices, revenue scenarios (CSVs for Excel/Numbers). |
 
 ## Adding new docs
 

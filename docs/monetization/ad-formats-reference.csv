@@ -1,0 +1,6 @@
+Ad format,Typical US eCPM range (fitness utility conservative),Suggested placement in Kinetriq,Max frequency recommendation,UX risk,Revenue potential vs banner
+Banner,0.30-1.00,Home screen footer results screen footer,Refresh 30-60s on Home only,Low annoyance always visible,Lowest
+Interstitial,4.00-12.00,After saved-video analysis completes; leaving Workout tab,Max 1 per session; 3-4 per day,High if during live camera or mid-rep,High
+Rewarded video,8.00-18.00,Watch ad for +1 extra analysis today or unlock export once,User opt-in only,Low if optional,High per impression
+Native,2.00-6.00,FAQ or tips list styled like content,Rare,Medium can look cheap,Medium
+Blended mix (banner + interstitial),3.00-6.00,Hybrid free tier,See Option E,Medium,Use for ad-revenue-scenarios.csv
