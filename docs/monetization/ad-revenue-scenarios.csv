@@ -1,0 +1,8 @@
+Scenario,MAU,Impressions per user per month,Blended eCPM USD,Monthly impressions,Estimated gross ad revenue USD per month,Notes
+Ads-only conservative,1000,15,4,15000,60,Assumes mostly US Tier-1; fill rate not 100%
+Ads-only conservative,5000,15,4,75000,300,
+Ads-only conservative,10000,20,5,200000,1000,Higher engagement users
+Ads-only conservative,50000,20,5,1000000,5000,
+Ads-only conservative,100000,25,6,2500000,15000,Q4 seasonal eCPM can be 30-50% higher
+Ads-only optimistic,10000,30,8,300000,2400,More interstitial/rewarded less banner
+Ads-only optimistic,50000,30,8,1500000,12000,

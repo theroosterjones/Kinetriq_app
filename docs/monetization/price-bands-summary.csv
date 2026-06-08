@@ -1,0 +1,9 @@
+Market segment,Example apps,Typical monthly USD,Typical annual USD,Model
+Budget squat-only,Squat Checker SquatEye,2.99-4.99,19.99-29.99,Subscription
+One-time unlock,FormLab,,3.99 one-time,IAP lifetime
+Mid form + fitness,Gymaholic Premium FormCoach Deadlift AI,6.99-9.99,39.99-77.99,Subscription + trial
+Serious barbell,Lift Pro Flex Premium Plus,9.99-19.99,83.99-199.99,Subscription + trial
+Multi-sport premium,SportsReflector Pro Coach,19.99-69.99,119.99+,Subscription
+Free no monetization,Form Factor,0,0,None
+Kinetriq recommended v1,Option B,7.99,59.99,Subscription + 7-day trial
+Kinetriq scale,Option E hybrid,7.99 + ads on free,59.99,Hybrid

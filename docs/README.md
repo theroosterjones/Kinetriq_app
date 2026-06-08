@@ -6,6 +6,7 @@ Supplements the main [README](../README.md). Start here for deep topics or AI/ag
 |----------|-------------|
 | [VideoOrientation.md](VideoOrientation.md) | **Saved-video decode & export orientation** — why Core Image + `preferredTransform` failed; why **AVMutableVideoComposition** + **AVAssetReaderVideoCompositionOutput** (v3.3.2+) is required; regression history; sanity checks. **Read before changing `VideoReader` or export dimensions.** |
 | [Troubleshooting.md](Troubleshooting.md) | **Open issues & investigation goals** — version-stamped (e.g. v3.3.2): squat/hinge overlays on exported assessments, saved-video Row/Deadlift crashes; mitigations and next steps. |
+| [monetization/Monetization-Review.md](monetization/Monetization-Review.md) | **Pricing & monetization review** — competitor apps/prices, Kinetriq options A–E, ad vs subscription revenue scenarios; CSVs for Excel/Numbers. |
 
 ## Adding new docs
 
