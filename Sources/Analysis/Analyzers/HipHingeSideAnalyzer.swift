@@ -88,10 +88,6 @@ final class HipHingeSideAnalyzer: ExerciseAnalyzer {
         let plumbBottom = SIMD2<Float>(hip.x, hip.y + 0.20)
         instructions.append(.line(from: plumbTop, to: plumbBottom, color: .magenta, width: 1))
 
-        // Extended reference lines showing the angle being measured (spine & femur vectors)
-        instructions.append(.extendedLine(from: shoulder, through: hip, color: .yellow, width: 1))
-        instructions.append(.extendedLine(from: knee,     through: hip, color: .yellow, width: 1))
-
         // Skeleton
         instructions.append(.line(from: shoulder, to: hip,   color: .green,  width: 3))
         instructions.append(.line(from: hip,      to: knee,  color: .green,  width: 3))

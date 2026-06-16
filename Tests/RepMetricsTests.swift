@@ -20,7 +20,7 @@ final class RepMetricsTests: XCTestCase {
         let collector = RepMetricsCollector()
         // 3 identical reps
         for i in 1...3 {
-            simulateIdenticalRep(collector, repNumber: i, at: Double(i - 1) * 4)
+            simulateIdenticalRep(collector, repNumber: i, at: Double(i - 1) * 3.5)
         }
 
         let score = collector.computeScore()
@@ -70,13 +70,55 @@ final class RepMetricsTests: XCTestCase {
         XCTAssertNotEqual(tempo, "--")
     }
 
+    func testTempoStringRoundsUsingSixTenthsThreshold() {
+        let metric = RepMetric(
+            repNumber: 1,
+            peakFlexionAngle: 90,
+            eccentricDuration: 2.3,
+            pauseBottomDuration: 2.5,
+            concentricDuration: 2.6,
+            pauseTopDuration: 4.65
+        )
+
+        XCTAssertEqual(metric.tempoString, "2-2-3-5")
+    }
+
+    func testTempoStringRoundsDownBelowSixTenthsAndUpAtSixTenths() {
+        let metric = RepMetric(
+            repNumber: 1,
+            peakFlexionAngle: 90,
+            eccentricDuration: 4.1,
+            pauseBottomDuration: 4.59,
+            concentricDuration: 4.6,
+            pauseTopDuration: 4.99
+        )
+
+        XCTAssertEqual(metric.tempoString, "4-4-5-5")
+    }
+
+    func testCurrentTempoStringUsesSixTenthsThreshold() {
+        let collector = RepMetricsCollector()
+
+        collector.update(phase: .eccentric, angle: 150, repCount: 0, timestamp: 0)
+        collector.update(phase: .pauseBottom, angle: 90, repCount: 0, timestamp: 2.5)
+        collector.update(phase: .concentric, angle: 100, repCount: 0, timestamp: 3.1)
+        collector.update(phase: .pauseTop, angle: 150, repCount: 0, timestamp: 5.7)
+        collector.update(phase: .pauseTop, angle: 150, repCount: 0, timestamp: 6.3)
+
+        XCTAssertEqual(collector.currentTempoString(), "2-1-3-1")
+    }
+
     // MARK: - Helpers
 
     private func simulateRep(_ collector: RepMetricsCollector, repNumber: Int, peakAngle: Float, at baseTime: Double) {
         collector.update(phase: .eccentric, angle: 160, repCount: repNumber - 1, timestamp: baseTime)
-        collector.update(phase: .eccentric, angle: peakAngle, repCount: repNumber - 1, timestamp: baseTime + 0.5)
+        collector.update(phase: .eccentric, angle: 130, repCount: repNumber - 1, timestamp: baseTime + 0.25)
+        if peakAngle <= 100 {
+            collector.update(phase: .eccentric, angle: 100, repCount: repNumber - 1, timestamp: baseTime + 0.5)
+        }
+        collector.update(phase: .eccentric, angle: peakAngle, repCount: repNumber - 1, timestamp: baseTime + 0.75)
         collector.update(phase: .pauseBottom, angle: peakAngle, repCount: repNumber - 1, timestamp: baseTime + 1.0)
-        collector.update(phase: .concentric, angle: 140, repCount: repNumber - 1, timestamp: baseTime + 1.5)
+        collector.update(phase: .concentric, angle: min(peakAngle + 30, 140), repCount: repNumber - 1, timestamp: baseTime + 1.5)
         collector.update(phase: .pauseTop, angle: 160, repCount: repNumber - 1, timestamp: baseTime + 2.0)
         // Rep completes
         collector.update(phase: .eccentric, angle: 155, repCount: repNumber, timestamp: baseTime + 2.5)
@@ -84,6 +126,8 @@ final class RepMetricsTests: XCTestCase {
 
     private func simulateIdenticalRep(_ collector: RepMetricsCollector, repNumber: Int, at baseTime: Double) {
         collector.update(phase: .eccentric, angle: 160, repCount: repNumber - 1, timestamp: baseTime)
+        collector.update(phase: .eccentric, angle: 130, repCount: repNumber - 1, timestamp: baseTime + 0.4)
+        collector.update(phase: .eccentric, angle: 100, repCount: repNumber - 1, timestamp: baseTime + 0.8)
         collector.update(phase: .eccentric, angle: 90, repCount: repNumber - 1, timestamp: baseTime + 1.0)
         collector.update(phase: .pauseBottom, angle: 90, repCount: repNumber - 1, timestamp: baseTime + 1.5)
         collector.update(phase: .concentric, angle: 130, repCount: repNumber - 1, timestamp: baseTime + 2.0)

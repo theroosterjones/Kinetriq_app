@@ -6,7 +6,7 @@ Use this file when picking up work on this repo. It summarizes architecture, con
 
 ## Product
 
-**Kinetriq** — iOS 17+ SwiftUI app for **on-device** exercise form analysis and movement assessments: pose (MediaPipe), joint angles, rep counting, tempo, optional HUD/score, letter-graded assessments. **No backend** — camera + photo library only.
+**Kinetriq** — iOS 17+ SwiftUI app for **on-device** exercise form analysis and movement assessments: pose (MediaPipe), joint angles, rep counting, tempo, optional HUD/score, letter-graded assessments. Account login and subscription access use Supabase Auth + RevenueCat so Pro access can work across iOS, future Android, and a future web UI; the movement-analysis pipeline remains on-device.
 
 ## Current release metadata (source of truth)
 
@@ -25,7 +25,7 @@ Use this file when picking up work on this repo. It summarizes architecture, con
 
 | Path | Purpose |
 |------|---------|
-| `project.yml` | XcodeGen spec, versions, MediaPipe plist patch scripts, SPM `SwiftTasksVision` |
+| `project.yml` | XcodeGen spec, versions, MediaPipe plist patch scripts, SPM `SwiftTasksVision` + RevenueCat |
 | `Sources/` | All app code + `pose_landmarker_full.task` (gitignored — see README for curl) |
 | `Tests/` | Unit tests |
 | `docs/` | Technical notes (VideoOrientation, Troubleshooting) |
@@ -66,7 +66,7 @@ Analyzers implement **`ExerciseAnalyzer`** or **`AssessmentAnalyzer`** (both con
 
 ### Tempo rounding
 
-All four tempo slots use **`.rounded(.down)`** so durations are never overstated (3.4 s → 3, 0.9 s → 0).
+All four tempo slots use a **0.6-second threshold**: fractional seconds below 0.6 round down, while 0.6 and above round up (2.5 s → 2, 2.6 s → 3).
 
 ### TempoTracker phase direction
 
@@ -74,10 +74,23 @@ All four tempo slots use **`.rounded(.down)`** so durations are never overstated
 
 | Value | Angle ↓ (joint closes) | Angle ↑ (joint opens) | Use for |
 |-------|------------------------|----------------------|---------|
-| `false` | eccentric | concentric | Squat, Deadlift, Lunge, Hip Hinge, OHP |
+| `false` | eccentric | concentric | Squat, Deadlift, Lunge, Hip Hinge, Dips, OHP |
 | `true` | **concentric** | **eccentric** | Elbow Curl, Row, Lat Pulldown |
 
 `pauseBottom` = end of eccentric (lengthened position); `pauseTop` = end of concentric (shortened/contracted).
+
+### Custom exercise overlays
+
+Saved-video and live exercise analysis support user-selected custom alignment overlays via `CustomOverlayOption`; assessments do not. Options default off and are appended after analyzer overlays so hardcoded analyzer lines should not duplicate them.
+
+### Accounts, subscriptions, and promo codes
+
+- Supabase Auth provides the stable user ID. After login, pass the Supabase UUID to RevenueCat as the app user ID.
+- RevenueCat entitlement: `kinetriq_pro` (legacy accepted IDs during migration: `pro`, `Kinetriq Pro`).
+- App Store products: `com.kevinjones.kinetriq.pro.monthly` and `com.kevinjones.kinetriq.pro.yearly`.
+- App-level Pro access is `active RevenueCat entitlement OR active backend promo/comp entitlement OR development unlock`.
+- Free-month and discount codes should be App Store / RevenueCat offer codes where possible; unlimited free access should be validated through the Supabase `redeem-promo-code` Edge Function.
+- Setup references: `docs/Subscriptions.md` and `docs/WebBackend.md`.
 
 ### Rep counting conventions
 
@@ -95,7 +108,8 @@ All four tempo slots use **`.rounded(.down)`** so durations are never overstated
 | Lunge | `LungeAnalyzer` | Side | Hip angle HUD |
 | Hip Hinge (Side) | `HipHingeSideAnalyzer` | Side | |
 | Hip Hinge (Back) | `HipHingeBackAnalyzer` | Rear | Self-calibrating rep count |
-| Barbell Row | `RowAnalyzer` | Side | Auto-side fallback; invertPhases: true |
+| Row | `RowAnalyzer` | Side | Auto-side fallback; invertPhases: true |
+| Dips | `DipsAnalyzer` | Side | Elbow reps; shoulder angle vs chest/torso |
 | Lat Pulldown/Chin Up (Side) | `LatPulldownAnalyzer` | Side | invertPhases: true |
 | Lat Pulldown/Chin Up (Front) | `LatPulldownFrontAnalyzer` | Front/Back | Bilateral; invertPhases: true |
 | Overhead Press | `OverheadPressAnalyzer` | Front/Back | Bilateral |
@@ -130,4 +144,4 @@ All four tempo slots use **`.rounded(.down)`** so durations are never overstated
 - [ ] Additional exercises
 - [ ] Export analysis summary
 
-Last updated: **Kinetriq 3.4.0** build **20**.
+Last updated: **Kinetriq 3.4.3** build **31**.

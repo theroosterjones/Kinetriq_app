@@ -29,7 +29,21 @@ final class LandmarkSmoother {
         var lastTime: Double
     }
 
+    private struct AnchorState2D {
+        var samples: [SIMD2<Float>] = []
+        var locked: SIMD2<Float>?
+        var releaseFrames = 0
+    }
+
+    private struct AnchorState3D {
+        var samples: [SIMD3<Float>] = []
+        var locked: SIMD3<Float>?
+        var releaseFrames = 0
+    }
+
     private var channels: [String: ChannelState] = [:]
+    private var anchors2D: [String: AnchorState2D] = [:]
+    private var anchors3D: [String: AnchorState3D] = [:]
 
     /// - Parameters:
     ///   - minCutoff: Smoothness at rest. Lower = smoother but more lag at rest.
@@ -69,8 +83,94 @@ final class LandmarkSmoother {
         )
     }
 
+    /// Stabilize an expected-stationary 2D anchor such as a planted wrist or foot.
+    ///
+    /// The anchor locks after several close samples and ignores small MediaPipe jitter.
+    /// If the landmark genuinely relocates for consecutive frames, it unlocks and
+    /// re-establishes at the new position.
+    func stabilizeAnchor(
+        key: String,
+        position: SIMD2<Float>,
+        stableRadius: Float = 0.018,
+        releaseRadius: Float = 0.055,
+        requiredSamples: Int = 5,
+        requiredReleaseFrames: Int = 5
+    ) -> SIMD2<Float> {
+        var state = anchors2D[key] ?? AnchorState2D()
+        defer { anchors2D[key] = state }
+
+        if let locked = state.locked {
+            if simd_distance(position, locked) > releaseRadius {
+                state.releaseFrames += 1
+                if state.releaseFrames >= requiredReleaseFrames {
+                    state = AnchorState2D(samples: [position], locked: nil, releaseFrames: 0)
+                    return position
+                }
+            } else {
+                state.releaseFrames = 0
+            }
+            return locked
+        }
+
+        state.samples.append(position)
+        if state.samples.count > requiredSamples {
+            state.samples.removeFirst(state.samples.count - requiredSamples)
+        }
+
+        let average = state.samples.reduce(SIMD2<Float>.zero, +) / Float(state.samples.count)
+        let maxDistance = state.samples.map { simd_distance($0, average) }.max() ?? 0
+        if state.samples.count >= requiredSamples, maxDistance <= stableRadius {
+            state.locked = average
+            return average
+        }
+
+        return average
+    }
+
+    /// Stabilize an expected-stationary 3D anchor for angle calculations.
+    func stabilizeAnchor3D(
+        key: String,
+        position: SIMD3<Float>,
+        stableRadius: Float = 0.025,
+        releaseRadius: Float = 0.10,
+        requiredSamples: Int = 5,
+        requiredReleaseFrames: Int = 5
+    ) -> SIMD3<Float> {
+        var state = anchors3D[key] ?? AnchorState3D()
+        defer { anchors3D[key] = state }
+
+        if let locked = state.locked {
+            if simd_distance(position, locked) > releaseRadius {
+                state.releaseFrames += 1
+                if state.releaseFrames >= requiredReleaseFrames {
+                    state = AnchorState3D(samples: [position], locked: nil, releaseFrames: 0)
+                    return position
+                }
+            } else {
+                state.releaseFrames = 0
+            }
+            return locked
+        }
+
+        state.samples.append(position)
+        if state.samples.count > requiredSamples {
+            state.samples.removeFirst(state.samples.count - requiredSamples)
+        }
+
+        let average = state.samples.reduce(SIMD3<Float>.zero, +) / Float(state.samples.count)
+        let maxDistance = state.samples.map { simd_distance($0, average) }.max() ?? 0
+        if state.samples.count >= requiredSamples, maxDistance <= stableRadius {
+            state.locked = average
+            return average
+        }
+
+        return average
+    }
+
     func reset() {
         channels.removeAll()
+        anchors2D.removeAll()
+        anchors3D.removeAll()
     }
 
     // MARK: - 1€ Filter Core

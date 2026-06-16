@@ -10,6 +10,7 @@ enum ExerciseType: String, CaseIterable, Identifiable, Codable {
     case hipHingeSide = "Hip Hinge (Side)"
     case hipHingeBack = "Hip Hinge (Back)"
     case row = "Row"
+    case dips = "Dips"
     case latPulldown = "Lat Pulldown"
     case latPulldownFront = "Lat Pulldown (Front)"
     case overheadPress = "Overhead Press"

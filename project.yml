@@ -10,6 +10,9 @@ packages:
   SwiftTasksVision:
     url: https://github.com/paescebu/SwiftTasksVision.git
     from: "0.10.14"
+  RevenueCat:
+    url: https://github.com/RevenueCat/purchases-ios-spm.git
+    from: "5.78.0"
 
 targets:
   Kinetriq:
@@ -17,6 +20,9 @@ targets:
     platform: iOS
     sources:
       - path: Sources
+    configFiles:
+      Debug: Config/KinetriqSecrets.xcconfig
+      Release: Config/KinetriqSecrets.xcconfig
     preBuildScripts:
       - name: Patch MediaPipe framework plist for App Store validation
         shell: /bin/sh
@@ -26,8 +32,8 @@ targets:
           SIM_PLIST="${DERIVED_DATA_ROOT}/SourcePackages/checkouts/SwiftTasksVision/Dependencies/MediaPipeTasksVision.xcframework/ios-arm64_x86_64-simulator/MediaPipeTasksVision.framework/Info.plist"
           
           MIN_OS="${IPHONEOS_DEPLOYMENT_TARGET:-17.0}"
-          VERSION="${MARKETING_VERSION:-3.4.2}"
-          BUILD="${CURRENT_PROJECT_VERSION:-26}"
+          VERSION="${MARKETING_VERSION:-3.4.3}"
+          BUILD="${CURRENT_PROJECT_VERSION:-31}"
 
           set_or_add() {
             local key="$1" val="$2" plist="$3"
@@ -65,8 +71,8 @@ targets:
           # Use build-setting variables with hardcoded fallbacks in case they are not
           # exported into the script environment during Archive / Distribution builds.
           MIN_OS="${IPHONEOS_DEPLOYMENT_TARGET:-17.0}"
-          VERSION="${MARKETING_VERSION:-3.4.2}"
-          BUILD="${CURRENT_PROJECT_VERSION:-26}"
+          VERSION="${MARKETING_VERSION:-3.4.3}"
+          BUILD="${CURRENT_PROJECT_VERSION:-31}"
 
           set_or_add() {
             local key="$1" val="$2" plist="$3"
@@ -89,12 +95,17 @@ targets:
         PRODUCT_NAME: Kinetriq
         PRODUCT_MODULE_NAME: Kinetriq
         TARGETED_DEVICE_FAMILY: "1"
-        MARKETING_VERSION: "3.4.2"
-        CURRENT_PROJECT_VERSION: "26"
+        MARKETING_VERSION: "3.4.3"
+        CURRENT_PROJECT_VERSION: "31"
         SWIFT_VERSION: "5.9"
         INFOPLIST_KEY_CFBundleDisplayName: "Kinetriq"
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "Kinetriq needs access to your photo library to select exercise videos for analysis."
         INFOPLIST_KEY_NSCameraUsageDescription: "Kinetriq uses your camera for real-time exercise form analysis with skeleton overlay."
+        INFOPLIST_KEY_KinetriqRevenueCatAPIKey: "$(KINETRIQ_REVENUECAT_API_KEY)"
+        INFOPLIST_KEY_KinetriqSupabaseURL: "$(KINETRIQ_SUPABASE_URL)"
+        INFOPLIST_KEY_KinetriqSupabaseAnonKey: "$(KINETRIQ_SUPABASE_ANON_KEY)"
+        INFOPLIST_KEY_KinetriqPrivacyPolicyURL: "$(KINETRIQ_PRIVACY_POLICY_URL)"
+        INFOPLIST_KEY_KinetriqTermsURL: "$(KINETRIQ_TERMS_URL)"
         INFOPLIST_KEY_UILaunchScreen_Generation: true
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
@@ -103,6 +114,10 @@ targets:
     dependencies:
       - package: SwiftTasksVision
         product: SwiftTasksVision
+      - package: RevenueCat
+        product: RevenueCat
+      - package: RevenueCat
+        product: RevenueCatUI
 
   KinetriqTests:
     type: bundle.unit-test

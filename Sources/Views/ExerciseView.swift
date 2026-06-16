@@ -251,6 +251,7 @@ private enum AnalysisMode: String, CaseIterable {
 }
 
 struct ExerciseView: View {
+    @EnvironmentObject private var router: AppRouter
     @StateObject private var processor = VideoProcessor()
 
     @State private var analysisMode: AnalysisMode = .savedVideo
@@ -262,6 +263,8 @@ struct ExerciseView: View {
     )?.defaultPlane ?? .frontal
     @State private var selectedSide: BodySide = .left
     @State private var overlayMode: OverlayMode = .fullHUD
+    @State private var customOverlayOptions: Set<CustomOverlayOption> = []
+    @State private var showCustomOverlays = false
     @State private var selectedVideoItem: PhotosPickerItem?
     @State private var selectedVideoURL: URL?
     @State private var analyzedVideoURL: URL?
@@ -274,6 +277,7 @@ struct ExerciseView: View {
     @State private var showingError = false
     @State private var errorMessage = ""
     @State private var showingShareSheet = false
+    @State private var showingFullScreenAnalyzedVideo = false
 
     private var selectedExercise: ExerciseConfig {
         ExerciseConfig.all.first { $0.type == selectedExerciseType } ?? ExerciseConfig.all[0]
@@ -299,34 +303,31 @@ struct ExerciseView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    modePicker
+            ZStack {
+                KScreenBackground()
+                ScrollView {
+                    VStack(spacing: KSpacing.lg) {
+                        modePicker
 
-                    if analysisMode == .savedVideo {
-                        categoryPicker
-                        exerciseOrAssessmentPicker
-                        if analysisCategory == .assessment {
-                            assessmentPlanePicker
+                        if analysisMode == .savedVideo {
+                            setupCard
+                            cameraTipBanner
+                            videoHero
+                            loadingVideoSection
+                            analyzeSection
+                            resultsSection
+                            exportSection
+                        } else {
+                            liveCameraHero
                         }
-                        cameraSetupTipCard
-                        sidePicker
-                        if analysisCategory == .exercise {
-                            overlayModePicker
-                        }
-                        videoPickerButton
-                        loadingVideoSection
-                        videoPreview
-                        analyzeSection
-                        resultsSection
-                        exportSection
-                    } else {
-                        liveCameraButton
                     }
+                    .padding(.horizontal, KSpacing.screenH)
+                    .padding(.top, KSpacing.xs)
+                    .padding(.bottom, KSpacing.xxl)
                 }
-                .padding(.bottom, 40)
             }
-            .navigationTitle("Workout")
+            .navigationTitle("Analyze")
+            .navigationBarTitleDisplayMode(.large)
             .alert("Error", isPresented: $showingError) {
                 Button("OK") { }
             } message: {
@@ -337,73 +338,123 @@ struct ExerciseView: View {
                     ShareSheet(items: [url])
                 }
             }
+            .fullScreenCover(isPresented: $showingFullScreenAnalyzedVideo) {
+                if let url = analyzedVideoURL {
+                    FullScreenVideoPlayer(url: url)
+                }
+            }
             .onChange(of: selectedVideoItem) { _, newItem in
                 Task { await loadVideo(from: newItem) }
             }
+            .onAppear { consumePendingRequest() }
+            .onChange(of: router.pendingRequest) { _, _ in consumePendingRequest() }
         }
     }
 
-    // MARK: - Subviews
+    // MARK: - Deep link from Home / Library
+
+    private func consumePendingRequest() {
+        guard let req = router.pendingRequest else { return }
+        analysisMode = req.mode == .liveCamera ? .liveCamera : .savedVideo
+        analysisCategory = req.category
+        if let ex = req.exercise { selectedExerciseType = ex }
+        if let asmt = req.assessment {
+            selectedAssessmentType = asmt
+            if let cfg = AssessmentConfig.all.first(where: { $0.type == asmt }),
+               !cfg.supportedPlanes.contains(selectedAssessmentPlane) {
+                selectedAssessmentPlane = cfg.defaultPlane
+            }
+        }
+        router.pendingRequest = nil
+    }
+
+    // MARK: - Mode picker
 
     private var modePicker: some View {
-        Picker("Mode", selection: $analysisMode) {
+        Picker("Mode", selection: $analysisMode.animation(.snappy)) {
             ForEach(AnalysisMode.allCases, id: \.self) { mode in
                 Text(mode.rawValue).tag(mode)
             }
         }
         .pickerStyle(.segmented)
-        .padding(.horizontal)
-        .padding(.top, 8)
+        .padding(.top, KSpacing.xs)
     }
 
-    private var categoryPicker: some View {
-        Picker("Category", selection: $analysisCategory) {
-            ForEach(AnalysisCategory.allCases, id: \.self) { cat in
-                Text(cat.rawValue).tag(cat)
+    // MARK: - Setup card (all configuration in one calm surface)
+
+    private var setupCard: some View {
+        KCard {
+            VStack(alignment: .leading, spacing: KSpacing.md) {
+                fieldLabel("Category")
+                Picker("Category", selection: $analysisCategory.animation(.snappy)) {
+                    ForEach(AnalysisCategory.allCases, id: \.self) { cat in
+                        Text(cat.rawValue).tag(cat)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                Divider().overlay(KColor.separator)
+
+                exerciseOrAssessmentPicker
+
+                if analysisCategory == .assessment {
+                    assessmentPlanePicker
+                }
+
+                if currentRequiresSideSelection {
+                    fieldLabel("Working side")
+                    Picker("Side", selection: $selectedSide) {
+                        Text("Left").tag(BodySide.left)
+                        Text("Right").tag(BodySide.right)
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                if analysisCategory == .exercise {
+                    Divider().overlay(KColor.separator)
+                    fieldLabel("Overlay")
+                    Picker("Overlay", selection: $overlayMode) {
+                        ForEach(OverlayMode.allCases, id: \.self) { mode in
+                            Text(mode.rawValue).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    customOverlayDisclosure
+                }
             }
         }
-        .pickerStyle(.segmented)
-        .padding(.horizontal)
     }
 
-    private var liveCameraButton: some View {
-        NavigationLink(destination: LiveAnalysisView()) {
-            Label("Start Live Analysis", systemImage: "camera.fill")
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.indigo)
-                .foregroundColor(.white)
-                .cornerRadius(12)
-        }
-        .padding(.horizontal)
+    private func fieldLabel(_ text: String) -> some View {
+        Eyebrow(text: text)
     }
 
     @ViewBuilder
     private var exerciseOrAssessmentPicker: some View {
-        if analysisCategory == .exercise {
-            Picker("Exercise", selection: $selectedExerciseType) {
-                ForEach(ExerciseConfig.all, id: \.type) { exercise in
-                    Text(exercise.displayName).tag(exercise.type)
+        HStack {
+            fieldLabel(analysisCategory == .exercise ? "Exercise" : "Assessment")
+            Spacer()
+            if analysisCategory == .exercise {
+                Picker("Exercise", selection: $selectedExerciseType) {
+                    ForEach(ExerciseConfig.all, id: \.type) { exercise in
+                        Text(exercise.displayName).tag(exercise.type)
+                    }
                 }
-            }
-            .pickerStyle(.menu)
-            .padding(.horizontal)
-        } else {
-            Picker("Assessment", selection: $selectedAssessmentType) {
-                ForEach(AssessmentType.allCases) { type in
-                    Text(type.rawValue).tag(type)
+                .pickerStyle(.menu)
+                .tint(KColor.accent)
+            } else {
+                Picker("Assessment", selection: $selectedAssessmentType) {
+                    ForEach(AssessmentType.allCases) { type in
+                        Text(type.rawValue).tag(type)
+                    }
                 }
-            }
-            .pickerStyle(.menu)
-            .padding(.horizontal)
-            .onChange(of: selectedAssessmentType) { _, newType in
-                // When the assessment changes, snap the plane back to that
-                // assessment's default rather than carrying over the previous
-                // selection (which may not be supported).
-                if let cfg = AssessmentConfig.all.first(where: { $0.type == newType }) {
-                    if !cfg.supportedPlanes.contains(selectedAssessmentPlane) {
-                        selectedAssessmentPlane = cfg.defaultPlane
+                .pickerStyle(.menu)
+                .tint(KColor.accent)
+                .onChange(of: selectedAssessmentType) { _, newType in
+                    if let cfg = AssessmentConfig.all.first(where: { $0.type == newType }) {
+                        if !cfg.supportedPlanes.contains(selectedAssessmentPlane) {
+                            selectedAssessmentPlane = cfg.defaultPlane
+                        }
                     }
                 }
             }
@@ -414,271 +465,268 @@ struct ExerciseView: View {
     private var assessmentPlanePicker: some View {
         let supported = selectedAssessment.supportedPlanes
         if supported.count > 1 {
+            fieldLabel("Plane")
             Picker("Plane", selection: $selectedAssessmentPlane) {
                 ForEach(supported) { plane in
                     Text(plane.displayName).tag(plane)
                 }
             }
             .pickerStyle(.segmented)
-            .padding(.horizontal)
         }
     }
+
+    private var customOverlayDisclosure: some View {
+        VStack(alignment: .leading, spacing: KSpacing.xs) {
+            Button {
+                withAnimation(.snappy) { showCustomOverlays.toggle() }
+            } label: {
+                HStack {
+                    Image(systemName: "line.diagonal")
+                        .foregroundStyle(KColor.accent)
+                    Text("Alignment overlays")
+                        .font(KFont.callout)
+                        .foregroundStyle(KColor.textPrimary)
+                    if !customOverlayOptions.isEmpty {
+                        KPill(text: "\(customOverlayOptions.count)", tint: KColor.accent, filled: true)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(KColor.textTertiary)
+                        .rotationEffect(.degrees(showCustomOverlays ? 180 : 0))
+                }
+            }
+            .buttonStyle(.plain)
+
+            if showCustomOverlays {
+                ForEach(CustomOverlayOption.allCases) { option in
+                    Toggle(isOn: overlayBinding(for: option)) {
+                        Text(option.rawValue)
+                            .font(KFont.subheadline)
+                            .foregroundStyle(KColor.textSecondary)
+                    }
+                    .tint(KColor.accent)
+                }
+            }
+        }
+    }
+
+    private func overlayBinding(for option: CustomOverlayOption) -> Binding<Bool> {
+        Binding(
+            get: { customOverlayOptions.contains(option) },
+            set: { isOn in
+                if isOn { customOverlayOptions.insert(option) }
+                else { customOverlayOptions.remove(option) }
+            }
+        )
+    }
+
+    // MARK: - Camera tip
+
+    private var cameraTipBanner: some View {
+        InfoBanner(icon: "camera.aperture",
+                   title: "Camera setup",
+                   message: currentCameraSetupTip,
+                   tint: KColor.accent)
+    }
+
+    // MARK: - Video hero / upload dropzone
 
     @ViewBuilder
-    private var cameraSetupTipCard: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "camera.aperture")
-                .foregroundStyle(.indigo)
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Camera setup tip")
-                    .font(.subheadline.weight(.semibold))
-                Text(currentCameraSetupTip)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+    private var videoHero: some View {
+        if let player {
+            VStack(spacing: KSpacing.sm) {
+                ZStack(alignment: .topLeading) {
+                    VideoPlayer(player: player)
+                        .frame(height: 320)
+                        .clipShape(RoundedRectangle(cornerRadius: KRadius.md, style: .continuous))
+                    if analyzedVideoURL != nil {
+                        KPill(text: "Analyzed", tint: KColor.teal, filled: true)
+                            .padding(KSpacing.sm)
+                    }
+                }
+                HStack(spacing: KSpacing.sm) {
+                    PhotosPicker(selection: $selectedVideoItem, matching: .videos) {
+                        Label("Replace", systemImage: "arrow.triangle.2.circlepath")
+                            .font(KFont.callout)
+                            .foregroundStyle(KColor.accent)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 44)
+                            .background(KColor.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: KRadius.sm, style: .continuous))
+                    }
+                    if analyzedVideoURL != nil {
+                        Button {
+                            showingFullScreenAnalyzedVideo = true
+                        } label: {
+                            Label("Full screen", systemImage: "arrow.up.left.and.arrow.down.right")
+                                .font(KFont.callout)
+                                .foregroundStyle(KColor.textPrimary)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 44)
+                                .background(KColor.surfaceSunken, in: RoundedRectangle(cornerRadius: KRadius.sm, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
             }
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
-        .padding(.horizontal)
-    }
-
-    @ViewBuilder
-    private var sidePicker: some View {
-        if currentRequiresSideSelection {
-            Picker("Side", selection: $selectedSide) {
-                Text("Left").tag(BodySide.left)
-                Text("Right").tag(BodySide.right)
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal)
-        }
-    }
-
-    private var overlayModePicker: some View {
-        Picker("Overlay", selection: $overlayMode) {
-            ForEach(OverlayMode.allCases, id: \.self) { mode in
-                Text(mode.rawValue).tag(mode)
-            }
-        }
-        .pickerStyle(.segmented)
-        .padding(.horizontal)
-    }
-
-    private var videoPickerButton: some View {
-        PhotosPicker(
-            selection: $selectedVideoItem,
-            matching: .videos
-        ) {
-            Label("Select Video", systemImage: "video.badge.plus")
-                .font(.headline)
+        } else {
+            PhotosPicker(selection: $selectedVideoItem, matching: .videos) {
+                VStack(spacing: KSpacing.sm) {
+                    Image(systemName: "video.badge.plus")
+                        .font(.system(size: 38, weight: .semibold))
+                        .foregroundStyle(KColor.accent)
+                    Text("Select a video")
+                        .font(KFont.headline)
+                        .foregroundStyle(KColor.textPrimary)
+                    Text("Choose a clip from your library to analyze")
+                        .font(KFont.caption)
+                        .foregroundStyle(KColor.textSecondary)
+                }
                 .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.blue)
-                .foregroundColor(.white)
-                .cornerRadius(12)
+                .frame(height: 200)
+                .background(KColor.surface, in: RoundedRectangle(cornerRadius: KRadius.md, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: KRadius.md, style: .continuous)
+                        .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [7, 5]))
+                        .foregroundStyle(KColor.accent.opacity(0.5))
+                )
+            }
         }
-        .padding(.horizontal)
     }
 
     @ViewBuilder
     private var loadingVideoSection: some View {
         if isLoadingSelectedVideo {
-            HStack(spacing: 10) {
-                ProgressView()
+            HStack(spacing: KSpacing.sm) {
+                ProgressView().tint(KColor.accent)
                 Text(videoLoadingStatus)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(KFont.subheadline)
+                    .foregroundStyle(KColor.textSecondary)
+                Spacer()
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding()
-            .background(Color(.systemGray6))
-            .cornerRadius(12)
-            .padding(.horizontal)
+            .padding(KSpacing.md)
+            .background(KColor.surface, in: RoundedRectangle(cornerRadius: KRadius.sm, style: .continuous))
         }
     }
 
-    @ViewBuilder
-    private var videoPreview: some View {
-        if let player {
-            VideoPlayer(player: player)
-                .frame(height: 300)
-                .cornerRadius(12)
-                .padding(.horizontal)
-        }
-    }
+    // MARK: - Analyze CTA
 
     @ViewBuilder
     private var analyzeSection: some View {
         if selectedVideoURL != nil {
-            Button {
-                Task { await analyzeVideo() }
-            } label: {
-                analyzeButtonLabel
+            if processor.isProcessing {
+                KCard {
+                    VStack(spacing: KSpacing.sm) {
+                        HStack {
+                            Text("Analyzing movement")
+                                .font(KFont.callout)
+                                .foregroundStyle(KColor.textPrimary)
+                            Spacer()
+                            Text("\(Int(processor.progress * 100))%")
+                                .font(KFont.callout)
+                                .foregroundStyle(KColor.accent)
+                                .monospacedDigit()
+                        }
+                        ProgressTrack(value: Double(processor.progress))
+                    }
+                }
+            } else {
+                Button {
+                    Task { await analyzeVideo() }
+                } label: {
+                    Label(analyzedVideoURL != nil ? "Re-analyze" : "Analyze form",
+                          systemImage: "waveform.path.ecg")
+                }
+                .buttonStyle(KPrimaryButtonStyle(
+                    gradient: LinearGradient(colors: [KColor.success, KColor.teal],
+                                             startPoint: .leading, endPoint: .trailing)
+                ))
             }
-            .disabled(processor.isProcessing)
-            .padding(.horizontal)
         }
     }
 
-    @ViewBuilder
-    private var analyzeButtonLabel: some View {
-        if processor.isProcessing {
-            VStack(spacing: 8) {
-                ProgressView(value: processor.progress)
-                Text("Analyzing... \(Int(processor.progress * 100))%")
-                    .font(.caption)
-            }
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.gray.opacity(0.3))
-            .cornerRadius(12)
-        } else {
-            Label(analyzedVideoURL != nil ? "Re-Analyze" : "Analyze Form",
-                  systemImage: "figure.run")
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.green)
-                .foregroundColor(.white)
-                .cornerRadius(12)
-        }
-    }
+    // MARK: - Results
 
     @ViewBuilder
     private var resultsSection: some View {
         if let metrics = assessmentMetrics, analysisCategory == .assessment {
-            assessmentResultsCard(metrics)
+            AssessmentReportCard(metrics: metrics,
+                                 trackingRate: analysisSummary?.poseDetectionRate)
         } else if let summary = analysisSummary {
             exerciseResultsCard(summary)
         }
     }
 
     private func exerciseResultsCard(_ summary: AnalysisSummary) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Results")
-                .font(.headline)
+        KCard {
+            VStack(alignment: .leading, spacing: KSpacing.md) {
+                SectionHeader("Form Analysis", eyebrow: "Results")
 
-            if selectedExerciseType == .shoulderAssessment {
-                if let tilt = summary.averageAngles.first(where: { $0.joint == .shoulder }) {
+                if selectedExerciseType == .shoulderAssessment,
+                   let tilt = summary.averageAngles.first(where: { $0.joint == .shoulder }) {
                     let absTilt = abs(tilt.degrees)
                     let elevSide = tilt.degrees >= 0 ? "Left" : "Right"
-                    Text("\(elevSide) shoulder elevated  \(String(format: "%.1f", absTilt))° avg")
-                }
-            } else {
-                Text("Reps: \(summary.totalReps)")
-            }
-
-            if let score = summary.finalScore {
-                Text("Score: \(score)/100")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(score >= 80 ? .green : score >= 60 ? .yellow : .red)
-            }
-
-            Text("Duration: \(String(format: "%.1f", summary.duration))s")
-
-            trackingRateRow(rate: summary.poseDetectionRate)
-
-            ForEach(summary.averageAngles, id: \.joint) { angle in
-                if selectedExerciseType == .shoulderAssessment, angle.joint == .shoulder {
+                    InfoBanner(icon: "figure.stand",
+                               title: "Shoulder elevation",
+                               message: "\(elevSide) shoulder elevated \(String(format: "%.1f", absTilt))° on average.",
+                               tint: KColor.violet)
                 } else {
-                    Text("Avg \(angle.joint.rawValue): \(Int(angle.degrees))\u{00B0}")
+                    HStack(spacing: KSpacing.md) {
+                        if let score = summary.finalScore {
+                            ScoreRing(value: score, size: 116, lineWidth: 11)
+                        }
+                        VStack(spacing: KSpacing.sm) {
+                            HStack(spacing: KSpacing.sm) {
+                                StatTile(icon: "number", value: "\(summary.totalReps)", label: "Reps", tint: KColor.accent)
+                                StatTile(icon: "timer", value: String(format: "%.1fs", summary.duration), label: "Duration", tint: KColor.teal)
+                            }
+                        }
+                    }
                 }
+
+                if !summary.averageAngles.isEmpty {
+                    Eyebrow(text: "Average joint angles")
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: KSpacing.xs) {
+                            ForEach(summary.averageAngles, id: \.joint) { angle in
+                                if !(selectedExerciseType == .shoulderAssessment && angle.joint == .shoulder) {
+                                    MetricChip(label: angle.joint.rawValue.capitalized,
+                                               value: "\(Int(angle.degrees))°",
+                                               tint: KColor.textPrimary)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                trackingRow(rate: summary.poseDetectionRate)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
-        .padding(.horizontal)
     }
 
-    private func assessmentResultsCard(_ metrics: AssessmentMetrics) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Assessment Results")
-                    .font(.headline)
-                Spacer()
-                Text(metrics.grade.rawValue)
-                    .font(.system(size: 36, weight: .bold, design: .rounded))
-                    .foregroundStyle(gradeColor(metrics.grade))
-            }
+    // MARK: - Tracking quality row
 
-            if let rate = analysisSummary?.poseDetectionRate {
-                trackingRateRow(rate: rate)
-            }
-
-            ForEach(metrics.subGrades, id: \.label) { sub in
-                HStack {
-                    Text(sub.label)
-                        .font(.subheadline)
-                    Spacer()
-                    Text(sub.grade.rawValue)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(gradeColor(sub.grade))
-                }
-            }
-
-            if let left = metrics.leftROM, let right = metrics.rightROM {
-                HStack {
-                    Text("Left: \(Int(left))°")
-                    Spacer()
-                    Text("Right: \(Int(right))°")
-                }
-                .font(.subheadline)
-            }
-
-            if metrics.asymmetryFlag, let asymm = metrics.asymmetryDeg {
-                Text("Asymmetry: \(Int(asymm))° difference")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-            }
-
-            ForEach(metrics.details, id: \.self) { detail in
-                Text(detail)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
-        .padding(.horizontal)
-    }
-
-    /// Colour-coded tracking quality row. Shows % of frames where MediaPipe detected a person.
-    /// Red < 40%, yellow 40–69%, green ≥ 70%. Helps diagnose missing overlays without Console.
     @ViewBuilder
-    private func trackingRateRow(rate: Float) -> some View {
+    private func trackingRow(rate: Float) -> some View {
         let pct = Int((rate * 100).rounded())
-        let color: Color = pct >= 70 ? .green : pct >= 40 ? .yellow : .red
-        HStack(spacing: 4) {
-            Image(systemName: pct >= 70 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+        let color: Color = pct >= 70 ? KColor.success : pct >= 40 ? KColor.warning : KColor.danger
+        HStack(spacing: KSpacing.xs) {
+            Image(systemName: pct >= 70 ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
                 .foregroundStyle(color)
                 .imageScale(.small)
-            Text("Pose tracked: \(pct)% of frames")
-                .font(.caption)
-                .foregroundStyle(pct >= 70 ? .secondary : color)
+            Text("Pose tracked \(pct)% of frames")
+                .font(KFont.caption)
+                .foregroundStyle(pct >= 70 ? KColor.textSecondary : color)
             if pct < 40 {
                 Text("— improve framing or lighting")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .font(KFont.caption)
+                    .foregroundStyle(KColor.textTertiary)
             }
+            Spacer(minLength: 0)
         }
     }
 
-    private func gradeColor(_ grade: LetterGrade) -> Color {
-        switch grade {
-        case .A: return .green
-        case .B: return Color(red: 0.6, green: 1.0, blue: 0.2)
-        case .C: return .yellow
-        case .D: return .orange
-        case .F: return .red
-        }
-    }
+    // MARK: - Export
 
     @ViewBuilder
     private var exportSection: some View {
@@ -686,15 +734,42 @@ struct ExerciseView: View {
             Button {
                 showingShareSheet = true
             } label: {
-                Label("Export Analyzed Video", systemImage: "square.and.arrow.up")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.orange)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
+                Label("Export analyzed video", systemImage: "square.and.arrow.up")
             }
-            .padding(.horizontal)
+            .buttonStyle(KSecondaryButtonStyle(tint: KColor.amber))
+        }
+    }
+
+    // MARK: - Live camera hero
+
+    private var liveCameraHero: some View {
+        VStack(spacing: KSpacing.md) {
+            VStack(spacing: KSpacing.sm) {
+                Image(systemName: "camera.viewfinder")
+                    .font(.system(size: 44, weight: .semibold))
+                    .foregroundStyle(.white)
+                Text("Live form coaching")
+                    .font(KFont.title2)
+                    .foregroundStyle(.white)
+                Text("Real-time skeleton overlay, reps, and tempo as you move.")
+                    .font(KFont.caption)
+                    .foregroundStyle(.white.opacity(0.85))
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, KSpacing.xl)
+            .background(KColor.tealGradient, in: RoundedRectangle(cornerRadius: KRadius.lg, style: .continuous))
+            .shadow(color: KColor.teal.opacity(0.3), radius: 20, x: 0, y: 12)
+
+            NavigationLink {
+                LiveAnalysisView()
+            } label: {
+                Label("Start live analysis", systemImage: "dot.radiowaves.left.and.right")
+            }
+            .buttonStyle(KPrimaryButtonStyle(
+                gradient: LinearGradient(colors: [KColor.teal, Color(hex: 0x16A4D8)],
+                                         startPoint: .leading, endPoint: .trailing)
+            ))
         }
     }
 
@@ -708,6 +783,7 @@ struct ExerciseView: View {
             selectedVideoURL = nil
             analyzedVideoURL = nil
             analysisSummary = nil
+            assessmentMetrics = nil
             player = nil
         }
 
@@ -730,6 +806,7 @@ struct ExerciseView: View {
                 selectedVideoURL = url
                 analyzedVideoURL = nil
                 analysisSummary = nil
+                assessmentMetrics = nil
                 player = AVPlayer(url: url)
             }
         } catch {
@@ -763,7 +840,8 @@ struct ExerciseView: View {
                 inputURL: inputURL,
                 outputURL: outputURL,
                 analyzer: analyzer,
-                overlayMode: analysisCategory == .exercise ? overlayMode : .simple
+                overlayMode: analysisCategory == .exercise ? overlayMode : .simple,
+                customOverlayOptions: analysisCategory == .exercise ? customOverlayOptions : []
             )
 
             let outputAsset = AVURLAsset(url: outputURL)
@@ -791,6 +869,136 @@ struct ExerciseView: View {
     }
 }
 
+// MARK: - Assessment report card (clinical, scannable)
+
+private struct AssessmentReportCard: View {
+    let metrics: AssessmentMetrics
+    let trackingRate: Float?
+
+    var body: some View {
+        KCard {
+            VStack(alignment: .leading, spacing: KSpacing.md) {
+                HStack(alignment: .center, spacing: KSpacing.md) {
+                    GradeBadge(grade: metrics.grade, size: 72)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Eyebrow(text: "Assessment report")
+                        Text(overallLabel)
+                            .font(KFont.title2)
+                            .foregroundStyle(KColor.textPrimary)
+                        Text(verdict)
+                            .font(KFont.caption)
+                            .foregroundStyle(KColor.textSecondary)
+                    }
+                    Spacer(minLength: 0)
+                }
+
+                if !metrics.subGrades.isEmpty {
+                    Divider().overlay(KColor.separator)
+                    Eyebrow(text: "Breakdown")
+                    ForEach(metrics.subGrades, id: \.label) { sub in
+                        HStack {
+                            Image(systemName: sub.grade <= .B ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                                .foregroundStyle(KColor.grade(sub.grade))
+                                .imageScale(.small)
+                            Text(sub.label)
+                                .font(KFont.subheadline)
+                                .foregroundStyle(KColor.textPrimary)
+                            Spacer()
+                            KPill(text: sub.grade.rawValue, tint: KColor.grade(sub.grade), filled: true)
+                        }
+                    }
+                }
+
+                if let left = metrics.leftROM, let right = metrics.rightROM {
+                    Divider().overlay(KColor.separator)
+                    Eyebrow(text: "Range of motion")
+                    romComparison(left: left, right: right)
+                    if metrics.asymmetryFlag, let asymm = metrics.asymmetryDeg {
+                        InfoBanner(icon: "arrow.left.arrow.right",
+                                   title: "Asymmetry detected",
+                                   message: "\(Int(asymm))° difference between sides — worth a closer look.",
+                                   tint: KColor.warning)
+                    }
+                }
+
+                if !metrics.details.isEmpty {
+                    Divider().overlay(KColor.separator)
+                    Eyebrow(text: "Recommendations")
+                    ForEach(metrics.details, id: \.self) { detail in
+                        HStack(alignment: .top, spacing: KSpacing.xs) {
+                            Image(systemName: "arrow.right.circle.fill")
+                                .font(.system(size: 13))
+                                .foregroundStyle(KColor.accent)
+                                .padding(.top, 1)
+                            Text(detail)
+                                .font(KFont.caption)
+                                .foregroundStyle(KColor.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+
+                if let rate = trackingRate {
+                    Divider().overlay(KColor.separator)
+                    trackingRow(rate: rate)
+                }
+            }
+        }
+    }
+
+    private var overallLabel: String {
+        switch metrics.grade {
+        case .A: return "Excellent"
+        case .B: return "Good"
+        case .C: return "Fair"
+        case .D: return "Limited"
+        case .F: return "Needs work"
+        }
+    }
+
+    private var verdict: String {
+        metrics.grade <= .B ? "Movement meets quality standards." : "Mobility or control limitations present."
+    }
+
+    private func romComparison(left: Float, right: Float) -> some View {
+        let maxV = Double(max(left, right, 1))
+        return VStack(spacing: KSpacing.xs) {
+            romRow(label: "Left", value: left, fraction: Double(left) / maxV, tint: KColor.accent)
+            romRow(label: "Right", value: right, fraction: Double(right) / maxV, tint: KColor.teal)
+        }
+    }
+
+    private func romRow(label: String, value: Float, fraction: Double, tint: Color) -> some View {
+        HStack(spacing: KSpacing.sm) {
+            Text(label)
+                .font(KFont.caption)
+                .foregroundStyle(KColor.textSecondary)
+                .frame(width: 42, alignment: .leading)
+            ProgressTrack(value: fraction, tint: tint)
+            Text("\(Int(value))°")
+                .font(KFont.callout)
+                .foregroundStyle(KColor.textPrimary)
+                .monospacedDigit()
+                .frame(width: 44, alignment: .trailing)
+        }
+    }
+
+    @ViewBuilder
+    private func trackingRow(rate: Float) -> some View {
+        let pct = Int((rate * 100).rounded())
+        let color: Color = pct >= 70 ? KColor.success : pct >= 40 ? KColor.warning : KColor.danger
+        HStack(spacing: KSpacing.xs) {
+            Image(systemName: pct >= 70 ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
+                .foregroundStyle(color)
+                .imageScale(.small)
+            Text("Pose tracked \(pct)% of frames")
+                .font(KFont.caption)
+                .foregroundStyle(pct >= 70 ? KColor.textSecondary : color)
+            Spacer(minLength: 0)
+        }
+    }
+}
+
 /// UIKit share sheet wrapper for exporting the analyzed video.
 struct ShareSheet: UIViewControllerRepresentable {
     let items: [Any]
@@ -800,4 +1008,35 @@ struct ShareSheet: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+private struct FullScreenVideoPlayer: View {
+    @Environment(\.dismiss) private var dismiss
+
+    private let player: AVPlayer
+
+    init(url: URL) {
+        self.player = AVPlayer(url: url)
+    }
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Color.black.ignoresSafeArea()
+
+            VideoPlayer(player: player)
+                .ignoresSafeArea()
+                .onAppear { player.play() }
+                .onDisappear { player.pause() }
+
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 34, weight: .semibold))
+                    .foregroundStyle(.white, .black.opacity(0.65))
+                    .padding()
+            }
+            .accessibilityLabel("Close full screen video")
+        }
+    }
 }

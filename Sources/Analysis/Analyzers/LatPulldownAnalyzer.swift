@@ -65,9 +65,6 @@ final class LatPulldownAnalyzer: ExerciseAnalyzer {
         instructions.append(contentsOf: SpineOverlay.instructions(
             ear: ear, shoulder: shoulder, hip: hip))
 
-        // Extended forearm line
-        instructions.append(.extendedLine(from: wrist, through: elbow, color: .cyan, width: 2))
-
         // Arm skeleton
         instructions.append(.line(from: shoulder, to: elbow, color: .yellow, width: 3))
         instructions.append(.line(from: elbow, to: wrist, color: .yellow, width: 3))

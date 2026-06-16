@@ -70,9 +70,6 @@ final class ElbowAnalyzer: ExerciseAnalyzer {
                 ear: ear, shoulder: shoulder, hip: hip))
         }
 
-        // Forearm extension reference line (background reference)
-        instructions.append(.extendedLine(from: elbow, through: wrist, color: .cyan, width: 2))
-
         // Upper arm and forearm
         instructions.append(.line(from: shoulder, to: elbow, color: .yellow, width: 3))
         instructions.append(.line(from: elbow, to: wrist, color: .yellow, width: 3))

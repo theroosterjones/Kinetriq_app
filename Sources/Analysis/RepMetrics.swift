@@ -1,5 +1,28 @@
 import Foundation
 
+enum TempoDurationFormatter {
+    private static let roundUpFractionThreshold = 0.6
+    private static let comparisonTolerance = 1e-9
+
+    static func seconds(_ duration: Double) -> Int {
+        guard duration.isFinite else { return 0 }
+
+        let nonNegativeDuration = max(0, duration)
+        let wholeSeconds = nonNegativeDuration.rounded(.down)
+        let fraction = nonNegativeDuration - wholeSeconds
+        return Int(wholeSeconds) + (fraction >= roundUpFractionThreshold - comparisonTolerance ? 1 : 0)
+    }
+
+    static func string(
+        eccentric: Double,
+        pauseBottom: Double,
+        concentric: Double,
+        pauseTop: Double
+    ) -> String {
+        "\(seconds(eccentric))-\(seconds(pauseBottom))-\(seconds(concentric))-\(seconds(pauseTop))"
+    }
+}
+
 /// Per-rep metrics capturing ROM peak and tempo phase durations.
 struct RepMetric: Codable {
     let repNumber: Int
@@ -14,10 +37,15 @@ struct RepMetric: Codable {
     }
 
     /// Formatted tempo string (e.g. "3-1-2-1").
-    /// All four phases round DOWN (floor) so durations are never overstated.
-    /// A 3.4 s eccentric reads as 3, a 0.9 s pause reads as 0.
+    /// All four phases round up only when the fractional seconds are at least 0.6.
+    /// A 3.4 s eccentric reads as 3, while a 0.6 s pause reads as 1.
     var tempoString: String {
-        "\(Int(eccentricDuration.rounded(.down)))-\(Int(pauseBottomDuration.rounded(.down)))-\(Int(concentricDuration.rounded(.down)))-\(Int(pauseTopDuration.rounded(.down)))"
+        TempoDurationFormatter.string(
+            eccentric: eccentricDuration,
+            pauseBottom: pauseBottomDuration,
+            concentric: concentricDuration,
+            pauseTop: pauseTopDuration
+        )
     }
 }
 
@@ -85,6 +113,7 @@ final class RepMetricsCollector {
 
             // Reset for next rep
             currentPeakAngle = .greatestFiniteMagnitude
+            lastAcceptedAngle = angle.isFinite ? angle : nil
             phaseAccumulators = [:]
             lastRepCount = repCount
         }
@@ -109,10 +138,15 @@ final class RepMetricsCollector {
     }
 
     /// Current in-progress tempo as a formatted string (e.g. "3-1-2-0").
-    /// All four phases use floor rounding, matching `RepMetric.tempoString`.
+    /// All four phases use the same 0.6-second threshold as `RepMetric.tempoString`.
     func currentTempoString() -> String {
         guard let t = currentTempo() else { return "--" }
-        return "\(Int(t.ecc.rounded(.down)))-\(Int(t.pauseB.rounded(.down)))-\(Int(t.con.rounded(.down)))-\(Int(t.pauseT.rounded(.down)))"
+        return TempoDurationFormatter.string(
+            eccentric: t.ecc,
+            pauseBottom: t.pauseB,
+            concentric: t.con,
+            pauseTop: t.pauseT
+        )
     }
 
     // MARK: - Scoring

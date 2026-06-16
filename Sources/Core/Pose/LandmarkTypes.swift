@@ -67,6 +67,12 @@ enum PoseLandmarkType: Int, CaseIterable {
     static func ankle(_ side: BodySide) -> PoseLandmarkType {
         side == .left ? .leftAnkle : .rightAnkle
     }
+    static func heel(_ side: BodySide) -> PoseLandmarkType {
+        side == .left ? .leftHeel : .rightHeel
+    }
+    static func footIndex(_ side: BodySide) -> PoseLandmarkType {
+        side == .left ? .leftFootIndex : .rightFootIndex
+    }
     static func ear(_ side: BodySide) -> PoseLandmarkType {
         side == .left ? .leftEar : .rightEar
     }

@@ -20,6 +20,7 @@ final class LiveAnalysisViewModel: ObservableObject {
     @Published private(set) var trackingWarningVisible = false
     @Published private(set) var cameraPosition: AVCaptureDevice.Position = .back
     @Published var overlayMode: OverlayMode = .simple
+    @Published var customOverlayOptions: Set<CustomOverlayOption> = []
     @Published private(set) var currentScore: Int?
 
     let metalRenderer = MetalCameraRenderer()
@@ -28,6 +29,7 @@ final class LiveAnalysisViewModel: ObservableObject {
     private let poseLandmarker = PoseLandmarkerService()
     private let overlayRenderer = OverlayRenderer()
     private let metricsCollector = RepMetricsCollector()
+    private let customOverlayState = CustomOverlayState()
 
     private var _analyzer: FrameAnalyzerProtocol?
     private var _recorder: LiveVideoRecorder?
@@ -46,6 +48,7 @@ final class LiveAnalysisViewModel: ObservableObject {
         _analyzer?.reset()
         _analyzer = analyzer
         metricsCollector.reset()
+        customOverlayState.reset()
         lowTrackingStreak = 0
         DispatchQueue.main.async {
             self.trackingWarningVisible = false
@@ -124,8 +127,17 @@ final class LiveAnalysisViewModel: ObservableObject {
             timestamp: timeSec
         )
 
-        // Build final instructions: base overlay + optional HUD
+        // Build final instructions: base overlay + user-selected alignment lines + optional HUD
         var finalInstructions = frameAnalysis.overlayInstructions
+        if let poseResult, let exerciseAnalyzer = _analyzer as? ExerciseAnalyzer {
+            finalInstructions.append(contentsOf: CustomOverlayBuilder.instructions(
+                options: customOverlayOptions,
+                landmarks: poseResult,
+                side: exerciseAnalyzer.side,
+                exerciseType: exerciseAnalyzer.exerciseType,
+                state: customOverlayState
+            ))
+        }
         let mode = overlayMode
         if mode == .fullHUD {
             finalInstructions.append(contentsOf:
@@ -237,18 +249,17 @@ struct OverlayCanvas: View {
             context.stroke(path, with: .color(color.swiftUIColor), lineWidth: CGFloat(width))
 
         case let .extendedLine(from, through, color, width):
-            // Extend from 'from' through 'through' to frame boundary
-            let p1 = point(from, size)
-            let p2 = point(through, size)
-            let dx = p2.x - p1.x
-            let dy = p2.y - p1.y
-            let len = sqrt(dx * dx + dy * dy)
-            guard len > 0.5 else { break }
-            let scale = max(size.width, size.height) * 2
-            let end = CGPoint(x: p2.x + dx / len * scale, y: p2.y + dy / len * scale)
+            let fromPx = SIMD2<Float>(Float(from.x * Float(size.width)), Float(from.y * Float(size.height)))
+            let throughPx = SIMD2<Float>(Float(through.x * Float(size.width)), Float(through.y * Float(size.height)))
+            let (start, end) = AngleCalculator.extendLineToFrame(
+                p1: fromPx,
+                p2: throughPx,
+                width: Float(size.width),
+                height: Float(size.height)
+            )
             var path = Path()
-            path.move(to: p2)
-            path.addLine(to: end)
+            path.move(to: CGPoint(x: CGFloat(start.x), y: CGFloat(start.y)))
+            path.addLine(to: CGPoint(x: CGFloat(end.x), y: CGFloat(end.y)))
             context.stroke(path, with: .color(color.swiftUIColor), lineWidth: CGFloat(width))
 
         case let .circle(at, radius, color, filled):
@@ -468,6 +479,20 @@ struct LiveAnalysisView: View {
                             .clipShape(Circle())
                     }
                     .accessibilityLabel(viewModel.overlayMode == .fullHUD ? "Switch to Simple overlay" : "Switch to Full HUD overlay")
+
+                    Menu {
+                        ForEach(CustomOverlayOption.allCases) { option in
+                            Toggle(option.rawValue, isOn: liveOverlayBinding(for: option))
+                        }
+                    } label: {
+                        Image(systemName: "line.diagonal")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(10)
+                            .background(.white.opacity(0.25))
+                            .clipShape(Circle())
+                    }
+                    .accessibilityLabel("Custom overlay options")
                 }
             }
         }
@@ -602,5 +627,18 @@ struct LiveAnalysisView: View {
         } else {
             viewModel.startRecording()
         }
+    }
+
+    private func liveOverlayBinding(for option: CustomOverlayOption) -> Binding<Bool> {
+        Binding(
+            get: { viewModel.customOverlayOptions.contains(option) },
+            set: { isSelected in
+                if isSelected {
+                    viewModel.customOverlayOptions.insert(option)
+                } else {
+                    viewModel.customOverlayOptions.remove(option)
+                }
+            }
+        )
     }
 }

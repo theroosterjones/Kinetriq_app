@@ -22,7 +22,8 @@ final class VideoProcessor: ObservableObject {
         inputURL: URL,
         outputURL: URL,
         analyzer: FrameAnalyzerProtocol,
-        overlayMode: OverlayMode = .simple
+        overlayMode: OverlayMode = .simple,
+        customOverlayOptions: Set<CustomOverlayOption> = []
     ) async throws -> AnalysisSummary {
         await MainActor.run {
             isProcessing = true
@@ -66,6 +67,7 @@ final class VideoProcessor: ObservableObject {
             var framesPoseOkEmptyOverlay = 0
             var writeFailures = 0
             let metricsCollector = RepMetricsCollector()
+            let customOverlayState = CustomOverlayState()
 
             while let (pixelBuffer, time) = reader.nextFrame() {
                 let timestampMs = Int(CMTimeGetSeconds(time) * 1000)
@@ -98,8 +100,17 @@ final class VideoProcessor: ObservableObject {
                     timestamp: timeSec
                 )
 
-                // Build final instruction list: base overlay + optional HUD
+                // Build final instruction list: base overlay + user-selected alignment lines + optional HUD.
                 var finalInstructions = frameResult.overlayInstructions
+                if let poseResult, let exerciseAnalyzer = analyzer as? ExerciseAnalyzer {
+                    finalInstructions.append(contentsOf: CustomOverlayBuilder.instructions(
+                        options: customOverlayOptions,
+                        landmarks: poseResult,
+                        side: exerciseAnalyzer.side,
+                        exerciseType: exerciseAnalyzer.exerciseType,
+                        state: customOverlayState
+                    ))
+                }
                 if overlayMode == .fullHUD {
                     finalInstructions.append(contentsOf:
                         HUDOverlayBuilder.instructions(

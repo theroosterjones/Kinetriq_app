@@ -40,3 +40,4 @@ Pods/
 # Kinetriq local
 .derivedData/
 .sourcepackages/
+Config/KinetriqSecrets.xcconfig
