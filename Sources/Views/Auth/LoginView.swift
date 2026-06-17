@@ -59,6 +59,13 @@ struct LoginView: View {
                 .textContentType(isSignUpMode ? .newPassword : .password)
                 .textFieldStyle(.roundedBorder)
 
+            if let hint = validationHint {
+                Label(hint, systemImage: "info.circle")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
             if !auth.isConfigured {
                 Label("Development mode: Supabase keys are placeholders, so sign-in creates a local test account.", systemImage: "wrench.and.screwdriver")
                     .font(.footnote)
@@ -126,5 +133,20 @@ struct LoginView: View {
 
     private var isFormValid: Bool {
         email.contains("@") && password.count >= 6
+    }
+
+    /// Explains why the action button is disabled so the form never feels broken.
+    private var validationHint: String? {
+        let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedEmail.isEmpty && password.isEmpty {
+            return "Enter your email and a password of at least 6 characters."
+        }
+        if !email.contains("@") {
+            return "Enter a valid email address."
+        }
+        if password.count < 6 {
+            return "Password must be at least 6 characters."
+        }
+        return nil
     }
 }

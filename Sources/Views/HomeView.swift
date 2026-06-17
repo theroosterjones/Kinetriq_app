@@ -11,11 +11,10 @@ struct HomeView: View {
                     VStack(spacing: KSpacing.lg) {
                         greeting
                         heroAnalyzeCard
-                        weeklySummary
-                        trendCard
                         toolsRow
                         librarySection
                         helpLink
+                        comingSoonSection
                     }
                     .padding(.horizontal, KSpacing.screenH)
                     .padding(.top, KSpacing.xs)
@@ -106,7 +105,24 @@ struct HomeView: View {
         }
     }
 
-    // MARK: Weekly summary (honest empty state until progress sync lands)
+    // MARK: Coming soon (progress, history & sample insights live at the bottom)
+
+    private var comingSoonSection: some View {
+        VStack(alignment: .leading, spacing: KSpacing.md) {
+            SectionHeader("Coming soon", eyebrow: "Roadmap") {
+                KPill(text: "In progress", tint: KColor.violet)
+            }
+            InfoBanner(icon: "clock.badge.checkmark",
+                       title: "Progress & history are on the way",
+                       message: "Saved analyses, weekly summaries, and assessment trends unlock when cloud sync ships in a future update. The cards below are a preview of what's coming.",
+                       tint: KColor.violet)
+            weeklySummary
+            trendCard
+        }
+        .padding(.top, KSpacing.xs)
+    }
+
+    // MARK: Weekly summary (honest preview until progress sync lands)
 
     private var weeklySummary: some View {
         VStack(alignment: .leading, spacing: KSpacing.sm) {

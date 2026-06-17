@@ -117,7 +117,7 @@
 		3BDFDE5807DB7517EDE91EBA /* AssessmentAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssessmentAnalyzer.swift; sourceTree = "<group>"; };
 		40CDA404091BD32E105DCE6B /* DeadliftAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeadliftAnalyzer.swift; sourceTree = "<group>"; };
 		431A75A8F8FBF0C0B0EC06AF /* MetalCameraRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalCameraRenderer.swift; sourceTree = "<group>"; };
-		4498B3BE6F00ABF7A99AEFBF /* pose_landmarker_full.task */ = {isa = PBXFileReference; path = pose_landmarker_full.task; sourceTree = "<group>"; };
+		4498B3BE6F00ABF7A99AEFBF /* pose_landmarker_full.task */ = {isa = PBXFileReference; lastKnownFileType = file; path = pose_landmarker_full.task; sourceTree = "<group>"; };
 		452F17D22FE12996726B620D /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 		47093B0CA25AA10D9579CB4B /* RepCounterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepCounterTests.swift; sourceTree = "<group>"; };
 		4E64FD879DE7A1E4EDD9CFDF /* OverlayRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayRenderer.swift; sourceTree = "<group>"; };
@@ -173,7 +173,7 @@
 		DA76761A200D74E0AB0718BD /* RepMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepMetrics.swift; sourceTree = "<group>"; };
 		DCC874CC73FA43ACF9DAF577 /* AngleCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AngleCalculatorTests.swift; sourceTree = "<group>"; };
 		DDE3D928D58F055BD19F345F /* AnalysisResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisResult.swift; sourceTree = "<group>"; };
-		EE7DFA37B0CFE9CA55A0E391 /* Kinetriq.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Kinetriq.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		EE7DFA37B0CFE9CA55A0E391 /* Kinetriq.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Kinetriq.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FBD0C1D25B50B700C2A4DDB8 /* LatPulldownAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LatPulldownAnalyzer.swift; sourceTree = "<group>"; };
 		FD404884424EF5F6004B8B6B /* DipsAnalyzerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DipsAnalyzerTests.swift; sourceTree = "<group>"; };
 		FDCD651FA2225CF12802BE0A /* SquatAssessmentAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SquatAssessmentAnalyzer.swift; sourceTree = "<group>"; };
@@ -492,8 +492,6 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1500;
-				TargetAttributes = {
-				};
 			};
 			buildConfigurationList = 5F7C51AD78DCEF58986587D5 /* Build configuration list for PBXProject "Kinetriq" */;
 			developmentRegion = en;
@@ -677,6 +675,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 31;
+				DEVELOPMENT_TEAM = YCKQ2HTCQ3;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Kinetriq;
 				INFOPLIST_KEY_KinetriqPrivacyPolicyURL = "$(KINETRIQ_PRIVACY_POLICY_URL)";
@@ -802,6 +801,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 31;
+				DEVELOPMENT_TEAM = YCKQ2HTCQ3;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Kinetriq;
 				INFOPLIST_KEY_KinetriqPrivacyPolicyURL = "$(KINETRIQ_PRIVACY_POLICY_URL)";
