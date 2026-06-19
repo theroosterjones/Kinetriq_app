@@ -1,10 +1,13 @@
 import SwiftUI
+import AuthenticationServices
 
 struct LoginView: View {
     @ObservedObject private var auth = AuthService.shared
+    @Environment(\.colorScheme) private var colorScheme
     @State private var email = ""
     @State private var password = ""
     @State private var isSignUpMode = false
+    @State private var currentNonce: String?
 
     var body: some View {
         NavigationStack {
@@ -13,6 +16,7 @@ struct LoginView: View {
                     header
                     form
                     actionButton
+                    appleSignInSection
                     secondaryActions
                     legalLinks
                 }
@@ -101,6 +105,52 @@ struct LoginView: View {
             .clipShape(RoundedRectangle(cornerRadius: 14))
         }
         .disabled(!isFormValid || auth.isLoading)
+    }
+
+    private var appleSignInSection: some View {
+        VStack(spacing: 16) {
+            HStack {
+                Rectangle().frame(height: 1).foregroundStyle(.quaternary)
+                Text("or")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Rectangle().frame(height: 1).foregroundStyle(.quaternary)
+            }
+
+            SignInWithAppleButton(.signIn) { request in
+                let nonce = AuthService.randomNonceString()
+                currentNonce = nonce
+                request.requestedScopes = [.fullName, .email]
+                request.nonce = AuthService.sha256(nonce)
+            } onCompletion: { result in
+                handleAppleCompletion(result)
+            }
+            .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+            .frame(height: 52)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+        }
+    }
+
+    private func handleAppleCompletion(_ result: Result<ASAuthorization, Error>) {
+        switch result {
+        case .success(let authResults):
+            guard let credential = authResults.credential as? ASAuthorizationAppleIDCredential,
+                  let nonce = currentNonce else {
+                auth.authError = "Apple sign-in could not be completed. Please try again."
+                return
+            }
+            Task {
+                await auth.signInWithApple(
+                    idTokenData: credential.identityToken,
+                    rawNonce: nonce,
+                    fullName: credential.fullName
+                )
+            }
+        case .failure(let error):
+            // Don't surface an error banner when the user simply cancels.
+            if (error as? ASAuthorizationError)?.code == .canceled { return }
+            auth.authError = error.localizedDescription
+        }
     }
 
     private var secondaryActions: some View {

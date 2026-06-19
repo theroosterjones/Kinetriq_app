@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import PhotosUI
 import Photos
 import AVKit
@@ -268,6 +269,7 @@ struct ExerciseView: View {
     @State private var selectedVideoItem: PhotosPickerItem?
     @State private var selectedVideoURL: URL?
     @State private var analyzedVideoURL: URL?
+    @State private var analyzedOverlayMode: OverlayMode?
     @State private var analysisSummary: AnalysisSummary?
     @State private var assessmentMetrics: AssessmentMetrics?
     @State private var player: AVPlayer?
@@ -276,8 +278,16 @@ struct ExerciseView: View {
 
     @State private var showingError = false
     @State private var errorMessage = ""
-    @State private var showingShareSheet = false
+    @State private var sharePayload: SharePayload?
     @State private var showingFullScreenAnalyzedVideo = false
+
+    // Content-export preset selections.
+    @State private var showingExportOptions = false
+    @State private var exportOverlayStyle: OverlayMode = .fullHUD
+    @State private var exportCropReels = false
+    @State private var isPreparingExport = false
+
+    @State private var hasRestoredSettings = false
 
     private var selectedExercise: ExerciseConfig {
         ExerciseConfig.all.first { $0.type == selectedExerciseType } ?? ExerciseConfig.all[0]
@@ -316,7 +326,7 @@ struct ExerciseView: View {
                             loadingVideoSection
                             analyzeSection
                             resultsSection
-                            exportSection
+                            shareActionsSection
                         } else {
                             liveCameraHero
                         }
@@ -333,10 +343,11 @@ struct ExerciseView: View {
             } message: {
                 Text(errorMessage)
             }
-            .sheet(isPresented: $showingShareSheet) {
-                if let url = analyzedVideoURL {
-                    ShareSheet(items: [url])
-                }
+            .sheet(item: $sharePayload) { payload in
+                ShareSheet(items: payload.items)
+            }
+            .sheet(isPresented: $showingExportOptions) {
+                exportOptionsSheet
             }
             .fullScreenCover(isPresented: $showingFullScreenAnalyzedVideo) {
                 if let url = analyzedVideoURL {
@@ -346,9 +357,66 @@ struct ExerciseView: View {
             .onChange(of: selectedVideoItem) { _, newItem in
                 Task { await loadVideo(from: newItem) }
             }
-            .onAppear { consumePendingRequest() }
+            .onAppear {
+                restoreSettingsIfNeeded()
+                consumePendingRequest()
+            }
             .onChange(of: router.pendingRequest) { _, _ in consumePendingRequest() }
+            .onChange(of: analysisCategory) { _, _ in persistSettings() }
+            .onChange(of: selectedExerciseType) { _, _ in persistSettings() }
+            .onChange(of: selectedAssessmentType) { _, _ in persistSettings() }
+            .onChange(of: selectedAssessmentPlane) { _, _ in persistSettings() }
+            .onChange(of: selectedSide) { _, _ in persistSettings() }
+            .onChange(of: overlayMode) { _, _ in persistSettings() }
+            .onChange(of: customOverlayOptions) { _, _ in persistSettings() }
         }
+    }
+
+    // MARK: - Remember last analysis settings
+
+    private func restoreSettingsIfNeeded() {
+        guard !hasRestoredSettings else { return }
+        hasRestoredSettings = true
+
+        let fallback = AnalysisSettingsStore.Snapshot(
+            category: analysisCategory,
+            exercise: selectedExerciseType,
+            assessment: selectedAssessmentType,
+            plane: selectedAssessmentPlane,
+            side: selectedSide,
+            overlayMode: overlayMode,
+            customOverlays: customOverlayOptions
+        )
+        let restored = AnalysisSettingsStore.load(defaults: fallback)
+
+        analysisCategory = restored.category
+        selectedExerciseType = restored.exercise
+        selectedAssessmentType = restored.assessment
+        selectedSide = restored.side
+        overlayMode = restored.overlayMode
+        customOverlayOptions = restored.customOverlays
+
+        // Clamp the restored plane to one the assessment actually supports.
+        if let cfg = AssessmentConfig.all.first(where: { $0.type == restored.assessment }) {
+            selectedAssessmentPlane = cfg.supportedPlanes.contains(restored.plane)
+                ? restored.plane
+                : cfg.defaultPlane
+        } else {
+            selectedAssessmentPlane = restored.plane
+        }
+    }
+
+    private func persistSettings() {
+        guard hasRestoredSettings else { return }
+        AnalysisSettingsStore.save(.init(
+            category: analysisCategory,
+            exercise: selectedExerciseType,
+            assessment: selectedAssessmentType,
+            plane: selectedAssessmentPlane,
+            side: selectedSide,
+            overlayMode: overlayMode,
+            customOverlays: customOverlayOptions
+        ))
     }
 
     // MARK: - Deep link from Home / Library
@@ -699,9 +767,99 @@ struct ExerciseView: View {
                     }
                 }
 
+                if let avgTempo = averageTempoString(summary.perRepMetrics) {
+                    Divider().overlay(KColor.separator)
+                    HStack(spacing: KSpacing.xs) {
+                        Image(systemName: "metronome")
+                            .foregroundStyle(KColor.teal)
+                            .imageScale(.small)
+                        Text("Average tempo")
+                            .font(KFont.caption)
+                            .foregroundStyle(KColor.textSecondary)
+                        Spacer()
+                        Text(avgTempo)
+                            .font(KFont.callout)
+                            .foregroundStyle(KColor.textPrimary)
+                            .monospacedDigit()
+                    }
+                    Text("Eccentric – pause – concentric – pause (seconds)")
+                        .font(.system(size: 11))
+                        .foregroundStyle(KColor.textTertiary)
+                }
+
+                perRepTable(summary.perRepMetrics)
+
+                CoachingSection(
+                    insights: CoachingInsights.exercise(summary: summary, exerciseType: selectedExerciseType),
+                    copyHeader: "Kinetriq — \(selectedExercise.displayName) form analysis"
+                )
+
                 trackingRow(rate: summary.poseDetectionRate)
             }
         }
+    }
+
+    // MARK: - Per-rep breakdown table
+
+    @ViewBuilder
+    private func perRepTable(_ reps: [RepMetric]) -> some View {
+        if !reps.isEmpty {
+            Divider().overlay(KColor.separator)
+            Eyebrow(text: "Per-rep breakdown")
+            VStack(spacing: 0) {
+                HStack {
+                    Text("Rep")
+                        .frame(width: 44, alignment: .leading)
+                    Text("Tempo")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text("Peak")
+                        .frame(width: 56, alignment: .trailing)
+                }
+                .font(KFont.micro)
+                .foregroundStyle(KColor.textTertiary)
+                .padding(.vertical, KSpacing.xs)
+
+                ForEach(reps, id: \.repNumber) { rep in
+                    HStack {
+                        Text("\(rep.repNumber)")
+                            .frame(width: 44, alignment: .leading)
+                            .foregroundStyle(KColor.textSecondary)
+                        Text(rep.tempoString)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .foregroundStyle(KColor.textPrimary)
+                        Text(peakAngleText(rep.peakFlexionAngle))
+                            .frame(width: 56, alignment: .trailing)
+                            .foregroundStyle(KColor.textPrimary)
+                    }
+                    .font(KFont.callout)
+                    .monospacedDigit()
+                    .padding(.vertical, 7)
+                    .background(
+                        rep.repNumber % 2 == 0
+                            ? Color.clear
+                            : KColor.surfaceSunken.opacity(0.6)
+                    )
+                }
+            }
+        }
+    }
+
+    private func peakAngleText(_ angle: Float) -> String {
+        guard angle.isFinite, angle < 1000 else { return "—" }
+        return "\(Int(angle.rounded()))°"
+    }
+
+    /// Average per-rep tempo across the set, formatted "ecc-pause-con-pause".
+    private func averageTempoString(_ reps: [RepMetric]) -> String? {
+        guard !reps.isEmpty else { return nil }
+        let n = Double(reps.count)
+        let ecc = reps.reduce(0) { $0 + $1.eccentricDuration } / n
+        let pauseB = reps.reduce(0) { $0 + $1.pauseBottomDuration } / n
+        let con = reps.reduce(0) { $0 + $1.concentricDuration } / n
+        let pauseT = reps.reduce(0) { $0 + $1.pauseTopDuration } / n
+        return TempoDurationFormatter.string(
+            eccentric: ecc, pauseBottom: pauseB, concentric: con, pauseTop: pauseT
+        )
     }
 
     // MARK: - Tracking quality row
@@ -726,18 +884,114 @@ struct ExerciseView: View {
         }
     }
 
-    // MARK: - Export
+    // MARK: - Share / export actions
 
     @ViewBuilder
-    private var exportSection: some View {
-        if analyzedVideoURL != nil {
-            Button {
-                showingShareSheet = true
-            } label: {
-                Label("Export analyzed video", systemImage: "square.and.arrow.up")
+    private var shareActionsSection: some View {
+        if analysisSummary != nil || assessmentMetrics != nil {
+            VStack(spacing: KSpacing.sm) {
+                Button {
+                    Task { await shareSummaryImage() }
+                } label: {
+                    Label("Share summary image", systemImage: "photo.on.rectangle.angled")
+                }
+                .buttonStyle(KSecondaryButtonStyle(tint: KColor.accent))
+
+                if analyzedVideoURL != nil {
+                    Button {
+                        exportOverlayStyle = analyzedOverlayMode ?? overlayMode
+                        exportCropReels = false
+                        showingExportOptions = true
+                    } label: {
+                        Label("Export analyzed video", systemImage: "square.and.arrow.up")
+                    }
+                    .buttonStyle(KSecondaryButtonStyle(tint: KColor.amber))
+                }
             }
-            .buttonStyle(KSecondaryButtonStyle(tint: KColor.amber))
         }
+    }
+
+    // MARK: - Content export preset sheet
+
+    private var exportOptionsSheet: some View {
+        NavigationStack {
+            ZStack {
+                KScreenBackground()
+                ScrollView {
+                    VStack(alignment: .leading, spacing: KSpacing.lg) {
+                        if analysisCategory == .exercise {
+                            KCard {
+                                VStack(alignment: .leading, spacing: KSpacing.sm) {
+                                    Eyebrow(text: "Overlay style")
+                                    Picker("Overlay style", selection: $exportOverlayStyle) {
+                                        ForEach(OverlayMode.allCases, id: \.self) { mode in
+                                            Text(mode == .simple ? "Simple (clean)" : "Full HUD (detailed)")
+                                                .tag(mode)
+                                        }
+                                    }
+                                    .pickerStyle(.segmented)
+                                    Text(exportOverlayStyle == .simple
+                                         ? "Skeleton and alignment lines only — a clean look for sharing."
+                                         : "Adds rep counter, score, and per-rep tempo history.")
+                                        .font(KFont.caption)
+                                        .foregroundStyle(KColor.textSecondary)
+                                    if let analyzed = analyzedOverlayMode, exportOverlayStyle != analyzed {
+                                        Label("The clip will be re-rendered with this overlay style.",
+                                              systemImage: "wand.and.stars")
+                                            .font(KFont.caption)
+                                            .foregroundStyle(KColor.accent)
+                                    }
+                                }
+                            }
+                        }
+
+                        KCard {
+                            VStack(alignment: .leading, spacing: KSpacing.sm) {
+                                Toggle(isOn: $exportCropReels) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Crop to 9:16")
+                                            .font(KFont.callout)
+                                            .foregroundStyle(KColor.textPrimary)
+                                        Text("Vertical format for Reels, TikTok, and Stories.")
+                                            .font(KFont.caption)
+                                            .foregroundStyle(KColor.textSecondary)
+                                    }
+                                }
+                                .tint(KColor.accent)
+                            }
+                        }
+
+                        Button {
+                            Task { await prepareAndShareExport() }
+                        } label: {
+                            if isPreparingExport {
+                                HStack(spacing: KSpacing.xs) {
+                                    ProgressView().tint(.white)
+                                    Text(processor.isProcessing
+                                         ? "Rendering \(Int(processor.progress * 100))%"
+                                         : "Preparing…")
+                                }
+                            } else {
+                                Label("Prepare & share", systemImage: "square.and.arrow.up")
+                            }
+                        }
+                        .buttonStyle(KPrimaryButtonStyle())
+                        .disabled(isPreparingExport)
+                    }
+                    .padding(.horizontal, KSpacing.screenH)
+                    .padding(.vertical, KSpacing.lg)
+                }
+            }
+            .navigationTitle("Export options")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { showingExportOptions = false }
+                        .disabled(isPreparingExport)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 
     // MARK: - Live camera hero
@@ -782,6 +1036,7 @@ struct ExerciseView: View {
             // Clear previous selection/results so state reflects current loading operation.
             selectedVideoURL = nil
             analyzedVideoURL = nil
+            analyzedOverlayMode = nil
             analysisSummary = nil
             assessmentMetrics = nil
             player = nil
@@ -854,6 +1109,7 @@ struct ExerciseView: View {
                 analysisSummary = summary
                 assessmentMetrics = metrics
                 analyzedVideoURL = outputURL
+                analyzedOverlayMode = analysisCategory == .exercise ? overlayMode : .simple
                 player = AVPlayer(url: outputURL)
             }
         } catch {
@@ -865,6 +1121,178 @@ struct ExerciseView: View {
                 errorMessage = "Analysis failed: \(error.localizedDescription)"
                 showingError = true
             }
+        }
+    }
+
+    // MARK: - Share summary image
+
+    @MainActor
+    private func shareSummaryImage() async {
+        guard let model = makeShareCardModel() else { return }
+        guard let url = SummaryImageRenderer.renderPNG(model) else {
+            errorMessage = "Could not create the summary image."
+            showingError = true
+            return
+        }
+        sharePayload = SharePayload(items: [url])
+    }
+
+    private func makeShareCardModel() -> SummaryShareCardModel? {
+        let date = Date().formatted(date: .abbreviated, time: .omitted)
+
+        if analysisCategory == .assessment, let metrics = assessmentMetrics {
+            var stats: [SummaryShareCardModel.Stat] = []
+            if let left = metrics.leftROM, let right = metrics.rightROM {
+                stats.append(.init(label: "Left ROM", value: "\(Int(left))°"))
+                stats.append(.init(label: "Right ROM", value: "\(Int(right))°"))
+                if let asymm = metrics.asymmetryDeg {
+                    stats.append(.init(label: "Asymmetry", value: "\(Int(asymm))°"))
+                }
+            } else {
+                stats = metrics.subGrades.prefix(3).map {
+                    .init(label: $0.label, value: $0.grade.rawValue)
+                }
+            }
+            let insights = CoachingInsights
+                .assessment(metrics: metrics, trackingRate: analysisSummary?.poseDetectionRate)
+                .map(\.text)
+            return SummaryShareCardModel(
+                categoryLabel: "Assessment",
+                title: selectedAssessmentType.rawValue,
+                headline: .grade(metrics.grade),
+                stats: stats,
+                insights: insights,
+                dateText: date
+            )
+        }
+
+        guard let summary = analysisSummary else { return nil }
+        let headline: SummaryShareCardModel.Headline = summary.finalScore
+            .map { .score($0) } ?? .reps(summary.totalReps)
+        var stats: [SummaryShareCardModel.Stat] = [
+            .init(label: "Reps", value: "\(summary.totalReps)"),
+            .init(label: "Duration", value: String(format: "%.0fs", summary.duration))
+        ]
+        if let avgTempo = averageTempoString(summary.perRepMetrics) {
+            stats.append(.init(label: "Avg tempo", value: avgTempo))
+        } else {
+            stats.append(.init(label: "Tracking", value: "\(Int((summary.poseDetectionRate * 100).rounded()))%"))
+        }
+        let insights = CoachingInsights
+            .exercise(summary: summary, exerciseType: selectedExerciseType)
+            .map(\.text)
+        return SummaryShareCardModel(
+            categoryLabel: "Form Analysis",
+            title: selectedExercise.displayName,
+            headline: headline,
+            stats: stats,
+            insights: insights,
+            dateText: date
+        )
+    }
+
+    // MARK: - Content export preset
+
+    private func prepareAndShareExport() async {
+        guard let analyzedURL = analyzedVideoURL else { return }
+        await MainActor.run { isPreparingExport = true }
+        defer { Task { @MainActor in isPreparingExport = false } }
+
+        do {
+            var workingURL = analyzedURL
+
+            // Re-render the overlay if the chosen style differs from the analyzed clip.
+            if analysisCategory == .exercise,
+               let analyzedMode = analyzedOverlayMode,
+               exportOverlayStyle != analyzedMode,
+               let inputURL = selectedVideoURL {
+                let outputURL = FileManager.default.temporaryDirectory
+                    .appendingPathComponent("export_\(UUID().uuidString).mp4")
+                let analyzer = selectedExercise.makeAnalyzer(side: selectedSide)
+                _ = try await processor.process(
+                    inputURL: inputURL,
+                    outputURL: outputURL,
+                    analyzer: analyzer,
+                    overlayMode: exportOverlayStyle,
+                    customOverlayOptions: customOverlayOptions
+                )
+                workingURL = outputURL
+            }
+
+            if exportCropReels {
+                workingURL = try await VideoExportService.cropToReels(sourceURL: workingURL)
+            }
+
+            await MainActor.run {
+                showingExportOptions = false
+                sharePayload = SharePayload(items: [workingURL])
+            }
+        } catch {
+            await MainActor.run {
+                showingExportOptions = false
+                errorMessage = "Export failed: \(error.localizedDescription)"
+                showingError = true
+            }
+        }
+    }
+}
+
+/// Identifiable wrapper so a single `.sheet(item:)` can present any share content.
+struct SharePayload: Identifiable {
+    let id = UUID()
+    let items: [Any]
+}
+
+// MARK: - Coaching insights section (shared by exercise + assessment cards)
+
+struct CoachingSection: View {
+    let insights: [CoachingInsight]
+    let copyHeader: String
+    @State private var copied = false
+
+    var body: some View {
+        if !insights.isEmpty {
+            VStack(alignment: .leading, spacing: KSpacing.sm) {
+                Divider().overlay(KColor.separator)
+                HStack {
+                    Eyebrow(text: "Coaching")
+                    Spacer()
+                    Button {
+                        UIPasteboard.general.string = CoachingInsights.clipboardText(insights, header: copyHeader)
+                        withAnimation { copied = true }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
+                            withAnimation { copied = false }
+                        }
+                    } label: {
+                        Label(copied ? "Copied" : "Copy",
+                              systemImage: copied ? "checkmark" : "doc.on.doc")
+                            .font(KFont.caption)
+                            .foregroundStyle(copied ? KColor.success : KColor.accent)
+                    }
+                    .buttonStyle(.plain)
+                }
+                ForEach(insights) { insight in
+                    HStack(alignment: .top, spacing: KSpacing.xs) {
+                        Image(systemName: insight.icon)
+                            .font(.system(size: 13))
+                            .foregroundStyle(tint(insight.tone))
+                            .frame(width: 18)
+                            .padding(.top, 1)
+                        Text(insight.text)
+                            .font(KFont.caption)
+                            .foregroundStyle(KColor.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+    }
+
+    private func tint(_ tone: InsightTone) -> Color {
+        switch tone {
+        case .positive: return KColor.success
+        case .caution: return KColor.warning
+        case .info: return KColor.accent
         }
     }
 }
@@ -937,6 +1365,11 @@ private struct AssessmentReportCard: View {
                         }
                     }
                 }
+
+                CoachingSection(
+                    insights: CoachingInsights.assessment(metrics: metrics, trackingRate: trackingRate),
+                    copyHeader: "Kinetriq — assessment report"
+                )
 
                 if let rate = trackingRate {
                     Divider().overlay(KColor.separator)

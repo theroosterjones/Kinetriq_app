@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 
 @MainActor
 final class AuthService: ObservableObject {
@@ -62,6 +63,31 @@ final class AuthService: ObservableObject {
             path: "signup",
             query: nil,
             body: ["email": email, "password": password]
+        )
+    }
+
+    /// Completes a Sign in with Apple flow by exchanging the Apple identity token
+    /// for a Supabase session (or a local dev session when Supabase isn't configured).
+    ///
+    /// - Parameters:
+    ///   - idTokenData: `ASAuthorizationAppleIDCredential.identityToken`.
+    ///   - rawNonce: the un-hashed nonce that was hashed into the Apple request.
+    ///   - fullName: name components Apple returns only on first authorization.
+    func signInWithApple(idTokenData: Data?, rawNonce: String, fullName: PersonNameComponents?) async {
+        guard let idTokenData, let idToken = String(data: idTokenData, encoding: .utf8) else {
+            authError = "Apple sign-in did not return a valid identity token."
+            return
+        }
+
+        guard isConfigured else {
+            createDevelopmentSessionForApple(fullName: fullName)
+            return
+        }
+
+        await performAuthRequest(
+            path: "token",
+            query: "grant_type=id_token",
+            body: ["provider": "apple", "id_token": idToken, "nonce": rawNonce]
         )
     }
 
@@ -146,6 +172,59 @@ final class AuthService: ObservableObject {
         self.session = session
         persist(session)
         Task { await PurchaseService.shared.identify(appUserID: userID) }
+    }
+
+    private func createDevelopmentSessionForApple(fullName: PersonNameComponents?) {
+        let name = fullName.flatMap {
+            PersonNameComponentsFormatter().string(from: $0).trimmingCharacters(in: .whitespaces)
+        }
+        let email = "apple-dev-user@kinetriq.local"
+        let user = UserProfile(
+            id: "dev-apple-user",
+            email: email,
+            displayName: name?.isEmpty == false ? name : nil,
+            createdAt: Date()
+        )
+        let session = AuthSession(
+            accessToken: "development-token",
+            refreshToken: nil,
+            expiresAt: Date().addingTimeInterval(60 * 60 * 24 * 365),
+            user: user
+        )
+        self.session = session
+        persist(session)
+        Task { await PurchaseService.shared.identify(appUserID: user.id) }
+    }
+
+    // MARK: - Sign in with Apple nonce helpers
+
+    /// Cryptographically random nonce used to bind the Apple credential to this request.
+    static func randomNonceString(length: Int = 32) -> String {
+        precondition(length > 0)
+        let charset: [Character] = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._")
+        var result = ""
+        var remaining = length
+        while remaining > 0 {
+            var random: UInt8 = 0
+            let status = SecRandomCopyBytes(kSecRandomDefault, 1, &random)
+            if status == errSecSuccess {
+                if random < charset.count {
+                    result.append(charset[Int(random) % charset.count])
+                    remaining -= 1
+                }
+            } else {
+                // Fallback that still yields a usable nonce if SecRandom fails.
+                result.append(charset.randomElement()!)
+                remaining -= 1
+            }
+        }
+        return result
+    }
+
+    /// SHA-256 hash (hex) of the nonce, which is what Apple expects in the request.
+    static func sha256(_ input: String) -> String {
+        let hashed = SHA256.hash(data: Data(input.utf8))
+        return hashed.map { String(format: "%02x", $0) }.joined()
     }
 
     private func restoreSession() {
