@@ -1,5 +1,32 @@
 import SwiftUI
 
+/// Renders an exercise's custom illustrated glyph (tintable template image),
+/// falling back to its SF Symbol if no glyph asset is assigned.
+struct ExerciseGlyphBadge: View {
+    let item: ExerciseLibrary.Item
+    var box: CGFloat
+    var symbolSize: CGFloat
+    var corner: CGFloat = KRadius.sm
+
+    var body: some View {
+        Group {
+            if let glyph = item.glyph {
+                Image(glyph)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: box * 0.64, height: box * 0.64)
+            } else {
+                Image(systemName: item.icon)
+                    .font(.system(size: symbolSize, weight: .semibold))
+            }
+        }
+        .foregroundStyle(item.tint)
+        .frame(width: box, height: box)
+        .background(item.tint.opacity(0.14), in: RoundedRectangle(cornerRadius: corner, style: .continuous))
+    }
+}
+
 struct ExerciseLibraryView: View {
     @EnvironmentObject private var router: AppRouter
 
@@ -106,11 +133,7 @@ struct ExerciseLibraryView: View {
     private func card(_ item: ExerciseLibrary.Item) -> some View {
         VStack(alignment: .leading, spacing: KSpacing.sm) {
             HStack {
-                Image(systemName: item.icon)
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(item.tint)
-                    .frame(width: 46, height: 46)
-                    .background(item.tint.opacity(0.14), in: RoundedRectangle(cornerRadius: KRadius.sm, style: .continuous))
+                ExerciseGlyphBadge(item: item, box: 46, symbolSize: 22)
                 Spacer()
                 if item.assessmentType != nil {
                     Image(systemName: "stethoscope")
@@ -189,11 +212,7 @@ private struct ExerciseDetailSheet: View {
 
     private var header: some View {
         HStack(spacing: KSpacing.md) {
-            Image(systemName: item.icon)
-                .font(.system(size: 30, weight: .semibold))
-                .foregroundStyle(item.tint)
-                .frame(width: 72, height: 72)
-                .background(item.tint.opacity(0.14), in: RoundedRectangle(cornerRadius: KRadius.md, style: .continuous))
+            ExerciseGlyphBadge(item: item, box: 72, symbolSize: 30, corner: KRadius.md)
             VStack(alignment: .leading, spacing: 6) {
                 Text(item.displayName)
                     .font(KFont.title2)

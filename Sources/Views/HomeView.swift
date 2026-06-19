@@ -241,11 +241,7 @@ struct HomeView: View {
 
     private func libraryChip(_ item: ExerciseLibrary.Item) -> some View {
         VStack(alignment: .leading, spacing: KSpacing.sm) {
-            Image(systemName: item.icon)
-                .font(.system(size: 24, weight: .semibold))
-                .foregroundStyle(item.tint)
-                .frame(width: 48, height: 48)
-                .background(item.tint.opacity(0.14), in: RoundedRectangle(cornerRadius: KRadius.sm, style: .continuous))
+            ExerciseGlyphBadge(item: item, box: 48, symbolSize: 24)
             Text(item.displayName)
                 .font(KFont.callout)
                 .foregroundStyle(KColor.textPrimary)

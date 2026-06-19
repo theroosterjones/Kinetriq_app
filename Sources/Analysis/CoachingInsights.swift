@@ -150,7 +150,7 @@ enum CoachingInsights {
         } else if change >= 0.25 {
             return CoachingInsight(
                 tone: .info, icon: "tortoise.fill",
-                text: "Your reps slowed \(Int(change * 100))% toward the end — likely fatigue. Stop a rep or two before form breaks down.")
+                text: "Your reps slowed \(Int(change * 100))% toward the end — likely fatigue. Stop a rep before form breaks down.")
         }
         return CoachingInsight(
             tone: .positive, icon: "metronome.fill",

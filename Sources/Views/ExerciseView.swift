@@ -1375,6 +1375,11 @@ private struct AssessmentReportCard: View {
                     Divider().overlay(KColor.separator)
                     trackingRow(rate: rate)
                 }
+
+                Text("For general fitness and educational purposes only — not medical advice. Consult a qualified professional for diagnosis or treatment.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(KColor.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
