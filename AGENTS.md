@@ -16,7 +16,7 @@ Use this file when picking up work on this repo. It summarizes architecture, con
 | Build number | `project.yml` → `CURRENT_PROJECT_VERSION` |
 | Xcode project | Generated — run **`xcodegen generate`** after editing `project.yml` |
 
-- Bundle id: `com.kevinjones.Kinetriq`
+- Bundle id: `com.kevinjones.KevLines2-0` (kept during testing so the existing App Store Connect + RevenueCat records work; migrates to `com.kevinjones.Kinetriq` at launch — see README roadmap)
 - Module name: `Kinetriq`
 - Test imports: `@testable import Kinetriq`
 - Xcode project: `Kinetriq.xcodeproj`
@@ -144,4 +144,4 @@ Saved-video and live exercise analysis support user-selected custom alignment ov
 - [ ] Additional exercises
 - [ ] Export analysis summary
 
-Last updated: **Kinetriq 3.5.0** build **32**.
+Last updated: **Kinetriq 3.5.0** build **33**.
