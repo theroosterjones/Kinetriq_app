@@ -144,4 +144,4 @@ Saved-video and live exercise analysis support user-selected custom alignment ov
 - [ ] Additional exercises
 - [ ] Export analysis summary
 
-Last updated: **Kinetriq 3.5.0** build **33**.
+Last updated: **Kinetriq 3.5.0** build **34**.

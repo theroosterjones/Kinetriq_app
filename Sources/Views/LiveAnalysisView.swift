@@ -401,14 +401,15 @@ struct LiveAnalysisView: View {
                 .pickerStyle(.segmented)
 
                 if isAssessmentMode {
-                    Picker("Assessment", selection: $selectedAssessmentType) {
-                        ForEach(AssessmentType.allCases) { type in
-                            Text(type.rawValue).tag(type)
+                    Menu {
+                        Picker("Assessment", selection: $selectedAssessmentType) {
+                            ForEach(AssessmentType.allCases) { type in
+                                Text(type.rawValue).tag(type)
+                            }
                         }
+                    } label: {
+                        dropdownLabel(text: selectedAssessmentType.rawValue)
                     }
-                    .pickerStyle(.menu)
-                    .tint(.white)
-                    .frame(maxWidth: .infinity, alignment: .leading)
 
                     let supportedPlanes = selectedAssessment.supportedPlanes
                     if supportedPlanes.count > 1 {
@@ -420,14 +421,15 @@ struct LiveAnalysisView: View {
                         .pickerStyle(.segmented)
                     }
                 } else {
-                    Picker("Exercise", selection: $selectedExerciseType) {
-                        ForEach(ExerciseConfig.all, id: \.type) { exercise in
-                            Text(exercise.displayName).tag(exercise.type)
+                    Menu {
+                        Picker("Exercise", selection: $selectedExerciseType) {
+                            ForEach(ExerciseConfig.all, id: \.type) { exercise in
+                                Text(exercise.displayName).tag(exercise.type)
+                            }
                         }
+                    } label: {
+                        dropdownLabel(text: selectedExercise.displayName)
                     }
-                    .pickerStyle(.menu)
-                    .tint(.white)
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 if currentRequiresSideSelection {
@@ -436,6 +438,20 @@ struct LiveAnalysisView: View {
                         Text("Right").tag(BodySide.right)
                     }
                     .pickerStyle(.segmented)
+                }
+
+                if !isAssessmentMode {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Overlay")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Picker("Overlay", selection: $viewModel.overlayMode) {
+                            ForEach(OverlayMode.allCases, id: \.self) { mode in
+                                Text(mode.rawValue).tag(mode)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                    }
                 }
 
                 if !viewModel.isRecording {
@@ -466,20 +482,6 @@ struct LiveAnalysisView: View {
                 .accessibilityLabel(viewModel.cameraPosition == .back ? "Switch to front camera" : "Switch to back camera")
 
                 if !isAssessmentMode {
-                    Button {
-                        viewModel.overlayMode = (viewModel.overlayMode == .simple) ? .fullHUD : .simple
-                    } label: {
-                        Image(systemName: viewModel.overlayMode == .fullHUD
-                            ? "gauge.with.dots.needle.bottom.100percent"
-                            : "gauge.with.dots.needle.bottom.50percent")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .padding(10)
-                            .background(.white.opacity(0.25))
-                            .clipShape(Circle())
-                    }
-                    .accessibilityLabel(viewModel.overlayMode == .fullHUD ? "Switch to Simple overlay" : "Switch to Full HUD overlay")
-
                     Menu {
                         ForEach(CustomOverlayOption.allCases) { option in
                             Toggle(option.rawValue, isOn: liveOverlayBinding(for: option))
@@ -498,6 +500,26 @@ struct LiveAnalysisView: View {
         }
         .padding()
         .background(.ultraThinMaterial)
+    }
+
+    /// Large, obviously-tappable label for the exercise/assessment dropdown menus.
+    /// The whole row (full width, 44pt min height) is the hit target, so users no
+    /// longer have to land on just the small text to open the picker.
+    private func dropdownLabel(text: String) -> some View {
+        HStack(spacing: 8) {
+            Text(text)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+            Spacer(minLength: 4)
+            Image(systemName: "chevron.up.chevron.down")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(.white.opacity(0.85))
+        }
+        .padding(.horizontal, 14)
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .background(.white.opacity(0.18), in: RoundedRectangle(cornerRadius: 12))
+        .contentShape(RoundedRectangle(cornerRadius: 12))
     }
 
     @ViewBuilder
