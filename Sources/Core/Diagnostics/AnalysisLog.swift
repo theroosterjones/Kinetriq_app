@@ -5,7 +5,7 @@ import os
 /// Uses `Logger` only (no file I/O) so the analysis loop stays fast.
 enum AnalysisLog {
 
-    static let subsystem = "com.kevinjones.KevLines2-0"
+    static let subsystem = "com.kevinjones.Kinetriq"
 
     static let pipeline = Logger(subsystem: subsystem, category: "Pipeline")
     static let pose = Logger(subsystem: subsystem, category: "Pose")

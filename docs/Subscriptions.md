@@ -66,7 +66,7 @@ After sign-in, the app calls RevenueCat login with the Supabase user UUID. This 
 Configure:
 
 1. Create one RevenueCat project for Kinetriq.
-2. Use the existing iOS app bundle ID `com.kevinjones.KevLines2-0` during testing (matches `project.yml`). At launch this migrates to `com.kevinjones.Kinetriq` — recreate the App Store Connect app and RevenueCat app together at that point.
+2. Bind the RevenueCat app to the launch bundle ID `com.kevinjones.Kinetriq` (matches `project.yml`). The KevLines testing identity has been retired.
 3. Create entitlement `kinetriq_pro`.
 4. Add App Store products:
    - `com.kevinjones.kinetriq.pro.monthly`

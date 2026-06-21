@@ -10,7 +10,7 @@ Kinetriq is an iOS 17+ app that analyzes exercise form and movement quality usin
 
 | Area | Change |
 |------|--------|
-| App name & bundle ID | Display name `KevLines` → `Kinetriq`. Bundle ID still `com.kevinjones.KevLines2-0` during testing; migrates to `com.kevinjones.Kinetriq` at launch (see Roadmap) |
+| App name & bundle ID | `KevLines` → `Kinetriq` (`com.kevinjones.Kinetriq`) |
 | Version reset | Starts at `1.0.0` build `1` |
 | Navigation | New **Home** tab (first, opens on launch); Workout → History → Settings |
 | History tab | "Coming soon" placeholder — full history tracking in a future release |
@@ -147,7 +147,7 @@ open Kinetriq.xcodeproj
 
 ## Roadmap
 
-- [ ] **Bundle ID migration at launch** — the app currently ships under the existing KevLines identifier `com.kevinjones.KevLines2-0` so the already-registered App Store Connect app and RevenueCat project keep working through TestFlight testing. **At public launch, recreate everything as Kinetriq:** new App ID/bundle ID `com.kevinjones.Kinetriq`, new App Store Connect app record, new RevenueCat app, and re-point the entitlement/products. Until then, leave the bundle ID unchanged.
+- [x] **Bundle ID migration to Kinetriq** — cut over from the KevLines testing identifier to the launch App ID `com.kevinjones.Kinetriq` and a new App Store Connect record, carrying the `3.5.x` version lineage forward (build numbering continues past KevLines build 34). Remaining launch work (RevenueCat app re-pointed to the Kinetriq bundle ID, IAP products in the new App Store Connect record, Supabase Edge Functions) is tracked in `docs/LaunchChecklist.md`.
 - [ ] Kinetriq logo & branding assets
 - [ ] Full workout history persistence and session browser
 - [ ] App Store submission prep (privacy policy, screenshots, metadata)
