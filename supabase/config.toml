@@ -1,0 +1,16 @@
+project_id = "gxurelxripxupcnmavef"
+
+# Edge Function JWT verification.
+# - redeem-promo-code / delete-account: called by the iOS app with a Supabase
+#   user access token, so JWT verification stays ON.
+# - revenuecat-webhook: called server-to-server by RevenueCat (no Supabase JWT),
+#   so JWT verification is OFF and the function authenticates via a shared secret.
+
+[functions.redeem-promo-code]
+verify_jwt = true
+
+[functions.delete-account]
+verify_jwt = true
+
+[functions.revenuecat-webhook]
+verify_jwt = false

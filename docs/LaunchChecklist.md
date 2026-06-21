@@ -45,10 +45,14 @@ App Store with the Pro subscription. Items are grouped by who can do them.
 
 ## 3. Backend — Supabase *(owner: you)*
 
+- [x] Edge Function implementations written in-repo (`redeem-promo-code`,
+      `revenuecat-webhook`, `delete-account`) + `schema.sql` indexes + `config.toml`.
+      See `supabase/README.md` for deploy steps.
 - [ ] Enable Supabase Auth: email/password (or magic link) **and** Sign in with Apple.
-- [ ] Deploy Edge Functions: `revenuecat-webhook` (+ set webhook/secret in
-      RevenueCat), `redeem-promo-code`, and **`delete-account`**.
-- [ ] Apply `supabase/schema.sql`; enable **RLS** on user-facing tables.
+- [ ] Apply `supabase/schema.sql` (tables, RLS, indexes).
+- [ ] `supabase secrets set REVENUECAT_WEBHOOK_SECRET=…`, then
+      `supabase functions deploy` all three functions.
+- [ ] In RevenueCat, add the webhook URL + matching Authorization secret.
 - [ ] Verify account deletion works end to end (App Store requirement).
 - [ ] Verify RevenueCat customer is keyed by the Supabase user UUID (cross-device).
 

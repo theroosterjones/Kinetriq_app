@@ -89,5 +89,14 @@ create policy "Users can read their account entitlements"
 on account_entitlements for select
 using (auth.uid() = user_id);
 
+-- Helpful indexes for the Edge Functions.
+-- One subscription mirror row per user + entitlement (supports webhook upsert).
+create unique index if not exists subscriptions_user_entitlement_idx
+  on subscriptions (user_id, entitlement);
+create index if not exists revenuecat_events_app_user_id_idx
+  on revenuecat_events (app_user_id);
+create index if not exists account_entitlements_user_active_idx
+  on account_entitlements (user_id, active);
+
 -- Mutations for subscription, promo, and account_entitlement tables should be
 -- performed by Supabase Edge Functions using the service-role key only.
