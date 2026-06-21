@@ -18,27 +18,28 @@ App Store with the Pro subscription. Items are grouped by who can do them.
 - [x] Sign in with Apple entitlement wired (`Kinetriq.entitlements`).
 - [x] Export-compliance flag set (`ITSAppUsesNonExemptEncryption = NO`).
 - [x] App icon asset set present (`AppIcon.appiconset`).
-- [ ] **Confirm Sign in with Apple + In-App Purchase capabilities are enabled on the
-      `com.kevinjones.Kinetriq` App ID** (otherwise archive provisioning fails). *(you)*
+- [x] Sign in with Apple + In-App Purchase capabilities confirmed on the
+      `com.kevinjones.Kinetriq` App ID. *(you)*
 
 ## 2. Subscriptions — RevenueCat + StoreKit *(owner: you)*
 
 - [x] `Config/KinetriqSecrets.xcconfig` populated with the real RevenueCat iOS public
       SDK key + Supabase URL (`gxurelxripxupcnmavef`) + publishable anon key.
       ⚠️ The real RevenueCat key disables the dev "free Pro" unlock — re-verify gating.
+- [x] RevenueCat app bundle ID re-pointed to `com.kevinjones.Kinetriq`.
+- [x] IAP subscription products created in the new App Store Connect record
+      (monthly with a free first week; yearly created).
 - [ ] Replace the placeholder `KINETRIQ_PRIVACY_POLICY_URL` / `KINETRIQ_TERMS_URL`
       in the secrets file with the **live** policy/terms URLs.
-- [ ] **Re-point the RevenueCat app's bundle ID** from `com.kevinjones.KevLines2-0`
-      to `com.kevinjones.Kinetriq` (RevenueCat → project → Apps → App Store config).
-      The SDK key `appl_…` stays the same after editing the bundle ID.
-- [ ] Create IAP subscriptions in the **new** App Store Connect record, one
-      subscription group:
-  - `com.kevinjones.kinetriq.pro.monthly` — $4.99/mo, 7-day free trial
-  - `com.kevinjones.kinetriq.pro.yearly` — $34.99/yr, 7-day free trial
-- [ ] Add subscription localizations + **review screenshot** (required for IAP review).
-- [ ] RevenueCat project bound to `com.kevinjones.Kinetriq`; entitlement
-      `kinetriq_pro`; attach both products; create an **offering marked current**
-      with monthly + annual packages.
+- [ ] **Decide the yearly intro offer** — monthly is free-first-week; confirm whether
+      yearly should also get a free trial or an intro discount, then set it in
+      App Store Connect (the planned spec was a 7-day trial on both plans).
+- [ ] **Discount / promo codes** — create App Store **offer codes** (and/or
+      promotional offers) for the discount + free-month campaigns. Unlimited comp
+      access goes through the Supabase `redeem-promo-code` Edge Function.
+- [ ] Add subscription **localizations + review screenshot** (required for IAP review).
+- [ ] In RevenueCat: entitlement `kinetriq_pro`, attach both products, and create an
+      **offering marked current** with monthly + annual packages.
 - [ ] Verify in-app: paywall loads offering, trials/prices correct, **Restore
       Purchases** works, manage-subscription link works.
 
