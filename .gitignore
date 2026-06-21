@@ -41,3 +41,12 @@ Pods/
 .derivedData/
 .sourcepackages/
 Config/KinetriqSecrets.xcconfig
+
+# Secrets / signing keys — NEVER commit these
+# App Store Connect / Apple auth keys (.p8), provisioning profiles, certs
+*.p8
+AuthKey_*.p8
+*.p12
+*.mobileprovision
+*.cer
+*.certSigningRequest
