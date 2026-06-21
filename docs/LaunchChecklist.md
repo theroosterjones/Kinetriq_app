@@ -58,14 +58,17 @@ App Store with the Pro subscription. Items are grouped by who can do them.
 
 ## 4. App Store Connect listing & compliance *(owner: you)*
 
-- [ ] Privacy Policy URL + Terms URL live and reachable.
-- [ ] App Privacy "nutrition labels" — declare account email/auth + analytics;
-      note that **video analysis is on-device and videos are not uploaded**.
+> First-pass copy, privacy-label answers, age-rating answers, and review notes
+> are drafted in **`docs/AppStoreListing.md`** — paste from there.
+
+- [x] Listing copy + App Privacy answers + age-rating answers drafted
+      (`docs/AppStoreListing.md`).
+- [ ] Privacy Policy URL + Terms URL live and reachable (also into the secrets file).
+- [ ] Enter App Privacy "nutrition labels" per the drafted table (account email/name,
+      user ID, purchases; **video analysis is on-device and not uploaded**).
 - [ ] iPhone screenshots for required sizes (6.9"/6.7" and 6.5").
-- [ ] Listing copy: name, subtitle, keywords, description, support URL,
-      category (Health & Fitness), age rating.
-- [ ] **Reviewer demo account** (login required) + App Review notes covering how to
-      reach Pro (comp promo code or sandbox steps).
+- [ ] Paste listing copy: subtitle, keywords, description, promo text, category, age rating.
+- [ ] **Reviewer demo account** (login required) + App Review notes + a Pro comp code.
 
 ## 5. Pre-submission QA (from `docs/Subscriptions.md` sandbox checklist) *(owner: you)*
 
