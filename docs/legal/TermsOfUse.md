@@ -1,12 +1,11 @@
 # Kinetriq Terms of Use
 
-**Effective date:** _[INSERT DATE]_
-**Last updated:** _[INSERT DATE]_
+**Effective date:** June 23, 2026
+**Last updated:** June 23, 2026
 
 > ⚠️ First-pass template. Have it reviewed by a qualified attorney before
-> publishing. Replace every _[BRACKETED]_ placeholder. Host the final version at a
-> public URL and reference it in App Store Connect and
-> `Config/KinetriqSecrets.xcconfig`.
+> publishing. Host the final version at `https://kinetriq.net/terms` and
+> reference it in App Store Connect and `Config/KinetriqSecrets.xcconfig`.
 >
 > Apple also requires that subscription apps either provide their own EULA or use
 > Apple's **Standard EULA**. If you use Apple's Standard EULA, you can link to it
@@ -16,8 +15,8 @@ These Terms of Use ("Terms") govern your use of the Kinetriq iOS application and
 related services (the "App"). By downloading or using the App, you agree to these
 Terms. If you do not agree, do not use the App.
 
-**Operator:** _[LEGAL ENTITY / SOLE PROPRIETOR NAME]_ ("we," "us," "our")
-**Contact:** _[support@kinetriq.com]_
+**Operator:** Kevin Jones ("we," "us," "our")
+**Contact:** kevin@kinetriq.net
 
 ---
 
@@ -160,7 +159,7 @@ means you accept the updated Terms.
 
 ## 14. Governing law
 
-These Terms are governed by the laws of _[STATE/COUNTRY]_, without regard to its
+These Terms are governed by the laws of the State of California, USA, without regard to its
 conflict-of-laws rules, except where applicable consumer-protection law requires
 otherwise.
 
@@ -178,4 +177,4 @@ not disclaimed) are ours, not Apple's.
 
 ## 16. Contact
 
-Questions about these Terms: _[support@kinetriq.com]_.
+Questions about these Terms: kevin@kinetriq.net.

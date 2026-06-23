@@ -23,7 +23,7 @@ taste; the **App Privacy** section is the important accuracy-sensitive part.
 | Bundle ID | `com.kevinjones.Kinetriq` |
 
 Alternate subtitle options (≤30):
-- "AI movement coach, on device" (29)
+- "Movement coach, on device" (29)
 - "Analyze your lifting form" (25)
 
 ---
@@ -148,7 +148,7 @@ other companies. (Do not present the ATT prompt; none is used.)
 
 - [ ] Privacy Policy URL (public, reachable) — also goes in `Config/KinetriqSecrets.xcconfig`
 - [ ] Terms of Use / EULA URL — Apple's standard EULA is acceptable if you don't have a custom one
-- [ ] Marketing/Support URL (e.g. kinetriq.com + a support page or email)
+- [ ] Marketing/Support URL — `https://kinetriq.net` + support email `kevin@kinetriq.net`
 
 ---
 

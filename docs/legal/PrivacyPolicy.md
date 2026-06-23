@@ -1,19 +1,19 @@
 # Kinetriq Privacy Policy
 
-**Effective date:** _[INSERT DATE]_
-**Last updated:** _[INSERT DATE]_
+**Effective date:** June 23, 2026
+**Last updated:** June 23, 2026
 
 > ⚠️ This is a first-pass template tailored to how Kinetriq actually works. Have
-> it reviewed by a qualified attorney before publishing. Replace every
-> _[BRACKETED]_ placeholder. Host the final version at a public URL and put that
-> URL in App Store Connect and `Config/KinetriqSecrets.xcconfig`.
+> it reviewed by a qualified attorney before publishing. Host the final version
+> at `https://kinetriq.net/privacy` and put that URL in App Store Connect and
+> `Config/KinetriqSecrets.xcconfig`.
 
 Kinetriq ("Kinetriq," "we," "us," or "our") provides an iOS application that
 analyzes exercise form and movement quality. This Privacy Policy explains what
 information the app handles and how. By using Kinetriq, you agree to this policy.
 
-**Operator:** _[LEGAL ENTITY / SOLE PROPRIETOR NAME]_
-**Contact:** _[support@kinetriq.com]_
+**Operator:** Kevin Jones
+**Contact:** kevin@kinetriq.net
 
 ---
 
@@ -127,14 +127,14 @@ will delete it.
 Depending on where you live (e.g. EEA/UK under GDPR, California under CCPA/CPRA),
 you may have rights to access, correct, delete, or port your personal
 information, and to object to or restrict certain processing. To exercise these
-rights, contact us at _[support@kinetriq.com]_. We do not sell or "share" (as
+rights, contact us at kevin@kinetriq.net. We do not sell or "share" (as
 defined under CCPA/CPRA) your personal information.
 
 ---
 
 ## International users
 
-We are based in _[COUNTRY/STATE]_. If you use Kinetriq from outside that region,
+We are based in California, USA. If you use Kinetriq from outside that region,
 your account/subscription information may be processed in countries with
 different data-protection laws than your own.
 
@@ -149,7 +149,7 @@ updated" date above and, where appropriate, notify you in the app.
 
 ## Contact
 
-Questions about this Privacy Policy: _[support@kinetriq.com]_.
+Questions about this Privacy Policy: kevin@kinetriq.net.
 
 ---
 
