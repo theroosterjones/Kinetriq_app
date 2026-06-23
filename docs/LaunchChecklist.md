@@ -64,6 +64,8 @@ App Store with the Pro subscription. Items are grouped by who can do them.
 - [x] Listing copy + App Privacy answers + age-rating answers drafted
       (`docs/AppStoreListing.md`).
 - [ ] Privacy Policy URL + Terms URL live and reachable (also into the secrets file).
+      Drafts ready to host in `docs/legal/PrivacyPolicy.md` + `docs/legal/TermsOfUse.md`
+      (fill placeholders + have a lawyer review).
 - [ ] Enter App Privacy "nutrition labels" per the drafted table (account email/name,
       user ID, purchases; **video analysis is on-device and not uploaded**).
 - [ ] iPhone screenshots for required sizes (6.9"/6.7" and 6.5").
