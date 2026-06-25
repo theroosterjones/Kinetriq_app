@@ -93,6 +93,36 @@ create policy "Users can read their account entitlements"
 on account_entitlements for select
 using (auth.uid() = user_id);
 
+-- Auto-provision a profile row whenever a new auth user is created (email/
+-- password, Sign in with Apple, etc.). Sign-in only creates an `auth.users`
+-- row; this keeps `profiles` in sync without app-side writes.
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into public.profiles (id, email, display_name)
+  values (
+    new.id,
+    new.email,
+    coalesce(
+      new.raw_user_meta_data->>'full_name',
+      new.raw_user_meta_data->>'name'
+    )
+  )
+  on conflict (id) do update
+    set email = excluded.email,
+        updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
 -- Helpful indexes for the Edge Functions.
 -- One subscription mirror row per user + entitlement (supports webhook upsert).
 create unique index if not exists subscriptions_user_entitlement_idx
