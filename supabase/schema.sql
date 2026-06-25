@@ -73,18 +73,22 @@ alter table promo_codes enable row level security;
 alter table promo_redemptions enable row level security;
 alter table account_entitlements enable row level security;
 
+drop policy if exists "Users can read their profile" on profiles;
 create policy "Users can read their profile"
 on profiles for select
 using (auth.uid() = id);
 
+drop policy if exists "Users can read their subscriptions" on subscriptions;
 create policy "Users can read their subscriptions"
 on subscriptions for select
 using (auth.uid() = user_id);
 
+drop policy if exists "Users can read their promo redemptions" on promo_redemptions;
 create policy "Users can read their promo redemptions"
 on promo_redemptions for select
 using (auth.uid() = user_id);
 
+drop policy if exists "Users can read their account entitlements" on account_entitlements;
 create policy "Users can read their account entitlements"
 on account_entitlements for select
 using (auth.uid() = user_id);
