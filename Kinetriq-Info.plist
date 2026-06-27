@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Custom configuration keys only. Apple's INFOPLIST_KEY_* build-setting
+	  mechanism does NOT inject arbitrary custom keys into the generated
+	  Info.plist (it only handles known Apple keys), so these must live in a
+	  real Info.plist file. Standard keys (CFBundle*, usage strings,
+	  orientations, launch screen) are still produced by GENERATE_INFOPLIST_FILE
+	  and merged in at build time. Values are substituted from build settings
+	  fed by Config/KinetriqSecrets.xcconfig.
+	-->
+	<key>KinetriqRevenueCatAPIKey</key>
+	<string>$(KINETRIQ_REVENUECAT_API_KEY)</string>
+	<key>KinetriqSupabaseURL</key>
+	<string>$(KINETRIQ_SUPABASE_URL)</string>
+	<key>KinetriqSupabaseAnonKey</key>
+	<string>$(KINETRIQ_SUPABASE_ANON_KEY)</string>
+	<key>KinetriqPrivacyPolicyURL</key>
+	<string>$(KINETRIQ_PRIVACY_POLICY_URL)</string>
+	<key>KinetriqTermsURL</key>
+	<string>$(KINETRIQ_TERMS_URL)</string>
+</dict>
+</plist>

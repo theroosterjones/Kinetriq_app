@@ -111,11 +111,10 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: "Kinetriq"
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "Kinetriq needs access to your photo library to select exercise videos for analysis."
         INFOPLIST_KEY_NSCameraUsageDescription: "Kinetriq uses your camera for real-time exercise form analysis with skeleton overlay."
-        INFOPLIST_KEY_KinetriqRevenueCatAPIKey: "$(KINETRIQ_REVENUECAT_API_KEY)"
-        INFOPLIST_KEY_KinetriqSupabaseURL: "$(KINETRIQ_SUPABASE_URL)"
-        INFOPLIST_KEY_KinetriqSupabaseAnonKey: "$(KINETRIQ_SUPABASE_ANON_KEY)"
-        INFOPLIST_KEY_KinetriqPrivacyPolicyURL: "$(KINETRIQ_PRIVACY_POLICY_URL)"
-        INFOPLIST_KEY_KinetriqTermsURL: "$(KINETRIQ_TERMS_URL)"
+        # Custom config keys (RevenueCat/Supabase/legal URLs) live in this file —
+        # INFOPLIST_KEY_* only injects Apple-known keys, not custom ones. Standard
+        # keys are still produced by GENERATE_INFOPLIST_FILE and merged in.
+        INFOPLIST_FILE: Kinetriq-Info.plist
         INFOPLIST_KEY_UILaunchScreen_Generation: true
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
