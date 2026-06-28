@@ -42,6 +42,10 @@ Pods/
 .sourcepackages/
 Config/KinetriqSecrets.xcconfig
 
+# Supabase CLI local scratch / linked-project state
+supabase/.temp/
+supabase/.branches/
+
 # Secrets / signing keys — NEVER commit these
 # App Store Connect / Apple auth keys (.p8), provisioning profiles, certs
 *.p8
