@@ -26,6 +26,11 @@ struct PromoCodeView: View {
                         .multilineTextAlignment(.center)
                 }
 
+                // NOTE: The example "KINETRIQ-COMP" is intentionally kept. In
+                // production it is validated against Supabase `promo_codes`, where
+                // the KINETRIQ-COMP row was deactivated (2026-07-07), so entering it
+                // returns "not valid" — it cannot be used to comp an account. Left
+                // as-is on purpose; do not treat this string as a live code.
                 TextField("e.g. KINETRIQ-COMP", text: $code)
                     .textFieldStyle(.roundedBorder)
                     .autocorrectionDisabled()

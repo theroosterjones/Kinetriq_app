@@ -119,3 +119,14 @@ This is a real discounted price, so it must be configured in Apple, **not** Supa
 |------|------|--------|------------|-----------|
 | `KINETRIQ-FOUNDER` | `unlimited` | Free forever (comp) | Supabase `promo_codes` | `promo_redemptions`, `account_entitlements` |
 | `Launch $2.99/mo` | App Store offer code | $2.99/mo for promo window | App Store Connect | ASC Analytics + RevenueCat |
+
+## Current live state (2026-07-07)
+
+- `KINETRIQ-FOUNDER` — **active** in Supabase (`unlimited` / permanent comp).
+- `KINETRIQ-COMP` — **deactivated** in Supabase. It is still shown as the example
+  placeholder in the in-app redeem field (`Sources/Views/PromoCodeView.swift`), kept
+  on purpose so the placeholder text can't be used to comp an account.
+- The hardcoded `KINETRIQ-COMP` / `KINETRIQ-MONTH` / `KINETRIQ-DISCOUNT` cases in
+  `Sources/Services/PromoRedemptionService.swift` are dev-only fallbacks (used when
+  Supabase isn't configured) and are never reached in production. Retained for
+  local/offline testing and future review.

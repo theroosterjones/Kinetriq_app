@@ -110,6 +110,16 @@ final class PromoRedemptionService: ObservableObject {
         lastRedeemedCode = UserDefaults.standard.string(forKey: redeemedCodeKey)
     }
 
+    // Developer-only promo fallback. These hardcoded codes are ONLY reached when
+    // `AppEnvironment.isSupabaseConfigured == false` (local/dev builds without real
+    // Supabase keys). In production, `redeem(...)` routes to the Supabase
+    // `redeem-promo-code` Edge Function and these are never consulted, so they are
+    // NOT a way for shipping users to comp an account.
+    //
+    // Live production codes are managed in the Supabase `promo_codes` table:
+    //   - KINETRIQ-FOUNDER : `unlimited` (permanent comp), active.
+    //   - KINETRIQ-COMP    : deactivated 2026-07-07 (was the in-app example only).
+    // Kept here intentionally for local/offline testing and future review.
     private static func developmentEntitlement(for code: String) -> AccountEntitlement? {
         let now = Date()
         switch code {
