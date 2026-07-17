@@ -1,5 +1,16 @@
 # Kinetriq promo & discount codes
 
+> **⚠️ Updated 2026-07-15 — in-app promo redemption removed.**
+> App Review Guideline 3.1.1 prohibits unlocking paid features outside In-App Purchase.
+> The in-app promo-code entry (`PromoCodeView`) and `PromoRedemptionService` were
+> **deleted**, and `hasProAccess` now depends only on the RevenueCat `kinetriq_pro`
+> entitlement (a `#if DEBUG`-only `developmentUnlocked` shortcut remains for local dev).
+>
+> **Use Apple App Store offer codes for all free/discounted/comp access** (Section 2
+> below). The Supabase `unlimited` comp path in Section 1 is **no longer reachable
+> from the app** — the SQL/Edge Function is retained only for history and any future
+> non-iOS surface. Do not re-wire it into iOS entitlement.
+
 Two very different mechanisms, one for each request:
 
 | Goal | Mechanism | Where it lives | Cost to user |
@@ -120,13 +131,12 @@ This is a real discounted price, so it must be configured in Apple, **not** Supa
 | `KINETRIQ-FOUNDER` | `unlimited` | Free forever (comp) | Supabase `promo_codes` | `promo_redemptions`, `account_entitlements` |
 | `Launch $2.99/mo` | App Store offer code | $2.99/mo for promo window | App Store Connect | ASC Analytics + RevenueCat |
 
-## Current live state (2026-07-07)
+## Current live state (2026-07-15)
 
-- `KINETRIQ-FOUNDER` — **active** in Supabase (`unlimited` / permanent comp).
-- `KINETRIQ-COMP` — **deactivated** in Supabase. It is still shown as the example
-  placeholder in the in-app redeem field (`Sources/Views/PromoCodeView.swift`), kept
-  on purpose so the placeholder text can't be used to comp an account.
-- The hardcoded `KINETRIQ-COMP` / `KINETRIQ-MONTH` / `KINETRIQ-DISCOUNT` cases in
-  `Sources/Services/PromoRedemptionService.swift` are dev-only fallbacks (used when
-  Supabase isn't configured) and are never reached in production. Retained for
-  local/offline testing and future review.
+- **In-app redemption removed.** `Sources/Views/PromoCodeView.swift` and
+  `Sources/Services/PromoRedemptionService.swift` were deleted; there is no in-app
+  code field and no client path that grants the `kinetriq_pro` entitlement.
+- `KINETRIQ-FOUNDER` / `KINETRIQ-COMP` rows may still exist in Supabase but are inert
+  for iOS — redeeming them in the app is no longer possible.
+- For anyone who previously needed a comp, issue an **Apple App Store offer code**
+  (a long-duration *Free* offer) instead (Section 2).

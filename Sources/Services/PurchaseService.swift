@@ -8,7 +8,6 @@ final class PurchaseService: ObservableObject {
     static let shared = PurchaseService()
 
     @Published private(set) var hasRevenueCatEntitlement = false
-    @Published private(set) var backendEntitlement: AccountEntitlement?
     @Published private(set) var customerInfo: CustomerInfo?
     @Published private(set) var offerings: Offerings?
     @Published private(set) var isLoading = true
@@ -22,9 +21,7 @@ final class PurchaseService: ObservableObject {
 
     private var isRevenueCatConfigured = false
 
-    private init() {
-        backendEntitlement = PromoRedemptionService.shared.activeEntitlement
-    }
+    private init() {}
 
     var hasConfiguredAPIKey: Bool {
         AppEnvironment.revenueCatAPIKey != nil
@@ -37,7 +34,6 @@ final class PurchaseService: ObservableObject {
     var accessState: SubscriptionAccessState {
         SubscriptionAccessState(
             hasRevenueCatEntitlement: hasRevenueCatEntitlement,
-            backendEntitlement: backendEntitlement,
             developmentUnlocked: developmentUnlocked
         )
     }
@@ -82,9 +78,6 @@ final class PurchaseService: ObservableObject {
     }
 
     func logOut() async {
-        PromoRedemptionService.shared.clearCachedEntitlement()
-        backendEntitlement = nil
-
         guard isRevenueCatConfigured else {
             hasRevenueCatEntitlement = false
             return
@@ -99,8 +92,6 @@ final class PurchaseService: ObservableObject {
     }
 
     func refreshStatus() async {
-        backendEntitlement = PromoRedemptionService.shared.activeEntitlement
-
         guard isRevenueCatConfigured else {
             isLoading = false
             return
@@ -141,26 +132,6 @@ final class PurchaseService: ObservableObject {
         if !hasProAccess {
             throw RestoreError.noPurchasesFound
         }
-    }
-
-    @discardableResult
-    func redeemPromoCode(_ code: String, authSession: AuthSession?) async -> Bool {
-        let redeemed = await PromoRedemptionService.shared.redeem(code: code, authSession: authSession)
-        backendEntitlement = PromoRedemptionService.shared.activeEntitlement
-        if redeemed {
-            await refreshStatus()
-        } else {
-            purchaseError = PromoRedemptionService.shared.redemptionError
-        }
-        return redeemed
-    }
-
-    func hasRedeemedPromoCode() -> Bool {
-        backendEntitlement?.isCurrentlyActive == true
-    }
-
-    func redeemedPromoCode() -> String? {
-        PromoRedemptionService.shared.lastRedeemedCode
     }
 
     func updateSubscriptionStatus(from info: CustomerInfo) {

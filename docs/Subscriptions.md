@@ -5,13 +5,17 @@ Kinetriq uses two separate systems:
 - **Supabase Auth** owns user login and the stable cross-device user ID.
 - **RevenueCat** owns store purchase state and the `kinetriq_pro` entitlement.
 
-The app combines those with backend promo/comp entitlements into one access decision:
+Shipping-build access is decided by the RevenueCat entitlement alone:
 
 ```text
-hasProAccess = active RevenueCat entitlement OR active backend comp/promo entitlement OR development unlock
+// Release builds
+hasProAccess = active RevenueCat `kinetriq_pro` entitlement
+
+// DEBUG builds only
+hasProAccess = active RevenueCat entitlement OR developmentUnlocked
 ```
 
-Development unlock is active only while the RevenueCat API key is still the placeholder in `project.yml`.
+`developmentUnlocked` is `true` only when no RevenueCat key is configured, and it is compiled out of Release builds with `#if DEBUG`. There is **no** in-app promo/comp path — App Review Guideline 3.1.1 prohibits unlocking paid features outside In-App Purchase. All free/discounted access is granted through **Apple App Store offer codes** (see "Promo codes" below).
 
 ## Product setup
 
@@ -63,35 +67,37 @@ After sign-in, the app calls RevenueCat login with the Supabase user UUID. This 
 
 ## RevenueCat
 
-Configure:
+A misconfigured entitlement/offering is the most common cause of "purchased but the
+paywall never dismissed" (App Review Guideline 2.1(b)): if the purchased product is
+not attached to the `kinetriq_pro` entitlement, `customerInfo.entitlements["kinetriq_pro"].isActive`
+stays `false`, so `hasProAccess` never flips and the full-screen paywall stays up.
+Work through every step and verify.
 
-1. Create one RevenueCat project for Kinetriq.
-2. Bind the RevenueCat app to the launch bundle ID `com.kevinjones.Kinetriq` (matches `project.yml`). The KevLines testing identity has been retired.
-3. Create entitlement `kinetriq_pro`.
-4. Add App Store products:
+1. **Project + app**: one RevenueCat project for Kinetriq; add an **App Store** app bound to bundle ID `com.kevinjones.Kinetriq` (matches `project.yml`). The KevLines testing identity is retired.
+2. **App Store Connect API key / shared secret**: in RevenueCat → Project settings → Apps → your App Store app, upload the **In-App Purchase Key** (App Store Connect API key) and the **app-specific shared secret** so RevenueCat can validate receipts. Without this, sandbox purchases won't post back reliably.
+3. **Products** (RevenueCat → Products → +):
    - `com.kevinjones.kinetriq.pro.monthly`
    - `com.kevinjones.kinetriq.pro.yearly`
-5. Attach both products to `kinetriq_pro`.
-6. Create an offering, mark it current, and include monthly and annual packages.
-7. Configure Customer Center or keep the Apple manage-subscriptions link as the fallback.
+   Import them from the store; confirm each shows its price and the **7-day free trial** intro offer pulled from App Store Connect.
+4. **Entitlement** (RevenueCat → Entitlements): create/confirm an entitlement whose identifier is exactly `kinetriq_pro`. **Attach BOTH products to it** (Entitlement → Attach products). This is the step that fixes the stuck-paywall bug.
+5. **Offering + packages** (RevenueCat → Offerings):
+   - Create an offering (e.g. `default`) and click **Make current** (the app reads `offerings.current`).
+   - Add a **Monthly** package pointing to the monthly product and an **Annual** package pointing to the yearly product.
+6. **Paywall** (RevenueCat → Paywalls): build/select a paywall for the current offering and **Publish** it. Make sure it clearly shows the plan **title, length, price, and price-per-unit** and the **7-day free trial** terms. (The app also overlays a legal footer with the subscription disclosure + Terms of Use (EULA)/Privacy links, but the price/length/trial come from this template.)
+7. **Verify end-to-end in sandbox** on an iPad + iPhone: sign in, open the paywall, confirm the Apple sheet shows the free trial, buy, and confirm the paywall auto-dismisses to the main tabs. Then confirm **Settings → Subscription** reads "Active".
+8. Configure Customer Center or keep the Apple manage-subscriptions link as the fallback.
 
-## Promo codes
+## Promo / discount / free access (Apple offer codes only)
 
-Three promo paths are supported:
+In-app promo-code redemption was **removed** (Guideline 3.1.1). All free months, discounts, and comp/free access must be delivered through **Apple App Store offer codes**, which the app redeems via `SKPaymentQueue.presentCodeRedemptionSheet()` ("Redeem App Store Offer Code" on the paywall and in Settings/Account) or via the App Store redemption URL.
 
-| Code type | Recommended source | Notes |
-|-----------|--------------------|-------|
-| Free month | App Store offer code / promotional offer | RevenueCat mirrors the entitlement after redemption |
-| Discount | App Store offer code / promotional offer | Define discount amount and duration before launch |
-| Unlimited free access | Supabase `redeem-promo-code` Edge Function | Tied to user account and works across devices |
+| Goal | Apple offer type | Notes |
+|------|------------------|-------|
+| Free month | Offer code — *Free* introductory/promo offer | RevenueCat mirrors the entitlement after redemption |
+| Discount | Offer code — *Pay as you go / pay up front* at a custom price | Define amount and duration in App Store Connect |
+| Free forever (comp) | Offer code — *Free* for a long duration, or a promo/complimentary campaign | Apple has no true "permanent free" IAP; use a long free offer and renew as needed |
 
-Local development fallback codes are available only while Supabase is unconfigured:
-
-- `KINETRIQ-MONTH`
-- `KINETRIQ-DISCOUNT`
-- `KINETRIQ-COMP`
-
-Do not rely on app-binary hardcoded codes for production campaigns.
+The Supabase `redeem-promo-code` Edge Function and `promo_codes` table remain in the repo for history but are no longer wired to in-app access. Do not reintroduce app-binary hardcoded codes for production campaigns.
 
 ## Sandbox checklist
 
@@ -102,7 +108,8 @@ Do not rely on app-binary hardcoded codes for production campaigns.
 - [ ] Paywall loads current offering.
 - [ ] Monthly purchase sheet shows 7-day free trial and $4.99/mo.
 - [ ] Annual purchase sheet shows 7-day free trial and annual discount.
+- [ ] **After purchasing, the paywall dismisses automatically and lands on the main tabs.**
+- [ ] Terms of Use (EULA) and Privacy Policy links on the paywall open live pages.
 - [ ] Restore purchases works.
-- [ ] App Store offer-code sheet opens.
-- [ ] Supabase promo redemption works for a comp account.
+- [ ] App Store offer-code sheet opens and a redeemed offer unlocks Pro.
 - [ ] Account deletion Edge Function is configured before App Store submission.

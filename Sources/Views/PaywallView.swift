@@ -7,7 +7,6 @@ struct PaywallView: View {
     @State private var selectedPlan: PlanType = .yearly
     @State private var isPurchasing = false
     @State private var isRestoring = false
-    @State private var showPromoCode = false
     @State private var errorMessage: String?
 
     enum PlanType { case monthly, yearly }
@@ -25,9 +24,11 @@ struct PaywallView: View {
             RevenueCatUI.PaywallView(displayCloseButton: false)
                 .onPurchaseCompleted { customerInfo in
                     service.updateSubscriptionStatus(from: customerInfo)
+                    Task { await service.refreshStatus() }
                 }
                 .onRestoreCompleted { customerInfo in
                     service.updateSubscriptionStatus(from: customerInfo)
+                    Task { await service.refreshStatus() }
                 }
                 .onPurchaseFailure { error in
                     errorMessage = error.localizedDescription
@@ -35,12 +36,12 @@ struct PaywallView: View {
                 .onRestoreFailure { error in
                     errorMessage = error.localizedDescription
                 }
+                .safeAreaInset(edge: .bottom) { legalOverlay }
 
             accessOptionsMenu
                 .padding(.top, 16)
                 .padding(.trailing, 16)
         }
-        .sheet(isPresented: $showPromoCode) { PromoCodeView() }
         .alert("Something went wrong", isPresented: .init(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
@@ -49,6 +50,32 @@ struct PaywallView: View {
         } message: {
             Text(errorMessage ?? "")
         }
+    }
+
+    /// Always-visible subscription disclosure and legal links rendered on top of the
+    /// RevenueCat paywall so the required title/length/price description and
+    /// functional Privacy Policy + Terms of Use (EULA) links are guaranteed to show
+    /// regardless of the RevenueCat dashboard template configuration.
+    private var legalOverlay: some View {
+        VStack(spacing: 6) {
+            Text("Kinetriq Pro is an auto-renewing subscription (billed monthly or yearly) that unlocks unlimited exercise analysis, all movement assessments, tempo tracking, rep counting, and annotated video export. Payment is charged to your Apple Account. It renews automatically unless canceled at least 24 hours before the end of the current period; manage or cancel anytime in your Apple Account settings.")
+                .font(.caption2)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+            HStack(spacing: 18) {
+                if let termsURL = AppEnvironment.termsURL {
+                    Link("Terms of Use (EULA)", destination: termsURL)
+                }
+                if let privacyURL = AppEnvironment.privacyPolicyURL {
+                    Link("Privacy Policy", destination: privacyURL)
+                }
+            }
+            .font(.caption2.bold())
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity)
+        .background(.ultraThinMaterial)
     }
 
     private var fallbackPaywall: some View {
@@ -75,7 +102,6 @@ struct PaywallView: View {
             }
         }
         .task { await service.fetchOfferings() }
-        .sheet(isPresented: $showPromoCode) { PromoCodeView() }
         .alert("Something went wrong", isPresented: .init(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
@@ -87,17 +113,14 @@ struct PaywallView: View {
     }
 
     private var accessOptionsMenu: some View {
-        Menu {
-            Button("Enter Promo Code") { showPromoCode = true }
-            Button("Redeem App Store Offer Code") {
-                service.presentAppStoreOfferCodeRedemption()
-                Task {
-                    try? await Task.sleep(nanoseconds: 2_000_000_000)
-                    await service.refreshStatus()
-                }
+        Button {
+            service.presentAppStoreOfferCodeRedemption()
+            Task {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                await service.refreshStatus()
             }
         } label: {
-            Label("Access Options", systemImage: "ellipsis.circle")
+            Label("Redeem Offer Code", systemImage: "gift")
                 .font(.footnote.bold())
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
@@ -218,10 +241,6 @@ struct PaywallView: View {
             }
             .disabled(isPurchasing || isRestoring)
 
-            Button("Have a promo code?") { showPromoCode = true }
-                .font(.footnote)
-                .foregroundStyle(.cyan)
-
             Button("Redeem App Store Offer Code") {
                 service.presentAppStoreOfferCodeRedemption()
                 Task {
@@ -242,10 +261,10 @@ struct PaywallView: View {
                 .multilineTextAlignment(.center)
             HStack(spacing: 16) {
                 if let termsURL = AppEnvironment.termsURL {
-                    Link("Terms", destination: termsURL)
+                    Link("Terms of Use (EULA)", destination: termsURL)
                 }
                 if let privacyURL = AppEnvironment.privacyPolicyURL {
-                    Link("Privacy", destination: privacyURL)
+                    Link("Privacy Policy", destination: privacyURL)
                 }
             }
             .font(.caption2)

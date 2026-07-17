@@ -5,7 +5,6 @@ struct SettingsView: View {
     @ObservedObject private var purchases = PurchaseService.shared
     @State private var config = AnalysisConfig.default
     @State private var showAdvanced = false
-    @State private var showPromoCode = false
     @State private var isRestoring = false
     @State private var restoreMessage: String?
 
@@ -64,7 +63,7 @@ struct SettingsView: View {
                     HStack {
                         Text("Version")
                         Spacer()
-                        Text("3.4.3")
+                        Text(Self.appVersion)
                             .foregroundStyle(.secondary)
                     }
                     HStack {
@@ -92,7 +91,6 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
         }
-        .sheet(isPresented: $showPromoCode) { PromoCodeView() }
         .alert("Restore Purchases", isPresented: .init(
             get: { restoreMessage != nil },
             set: { if !$0 { restoreMessage = nil } }
@@ -115,7 +113,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Kinetriq")
                         .font(KFont.title2)
-                    Text("Movement Intelligence · v3.4.3")
+                    Text("Movement Intelligence · v\(Self.appVersion)")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -133,7 +131,7 @@ struct SettingsView: View {
                 } label: {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(auth.currentEmail ?? "Signed in")
-                        Text("Manage account, promo codes, and deletion")
+                        Text("Manage account and deletion")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -160,10 +158,6 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            if let code = purchases.redeemedPromoCode() {
-                LabeledContent("Promo code", value: code)
-            }
-
             Button("Restore Purchases") {
                 Task {
                     isRestoring = true
@@ -177,9 +171,6 @@ struct SettingsView: View {
                 }
             }
             .disabled(isRestoring)
-
-            Button("Redeem Promo Code") { showPromoCode = true }
-                .foregroundStyle(KColor.accent)
 
             Button("Redeem App Store Offer Code") {
                 purchases.presentAppStoreOfferCodeRedemption()
@@ -198,13 +189,16 @@ struct SettingsView: View {
         }
     }
 
+    static var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+    }
+
     private var subscriptionStatusText: String {
+        #if DEBUG
         if purchases.developmentUnlocked {
             return "Dev unlocked"
         }
-        if purchases.hasRedeemedPromoCode() {
-            return "Promo"
-        }
+        #endif
         if purchases.hasRevenueCatEntitlement {
             return "Active"
         }

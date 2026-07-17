@@ -43,7 +43,7 @@ struct LoginView: View {
                 .foregroundStyle(.blue)
             Text("Kinetriq")
                 .font(.system(size: 36, weight: .bold, design: .rounded))
-            Text("Sign in once and use your subscription across iOS, Android, and web.")
+            Text("Sign in to access your Kinetriq Pro subscription and sync it across your devices.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -174,7 +174,7 @@ struct LoginView: View {
                 Link("Privacy Policy", destination: privacyURL)
             }
             if let termsURL = AppEnvironment.termsURL {
-                Link("Terms", destination: termsURL)
+                Link("Terms of Use (EULA)", destination: termsURL)
             }
         }
         .font(.caption)

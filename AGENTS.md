@@ -83,13 +83,14 @@ All four tempo slots use a **0.6-second threshold**: fractional seconds below 0.
 
 Saved-video and live exercise analysis support user-selected custom alignment overlays via `CustomOverlayOption`; assessments do not. Options default off and are appended after analyzer overlays so hardcoded analyzer lines should not duplicate them.
 
-### Accounts, subscriptions, and promo codes
+### Accounts, subscriptions, and offer codes
 
 - Supabase Auth provides the stable user ID. After login, pass the Supabase UUID to RevenueCat as the app user ID.
 - RevenueCat entitlement: `kinetriq_pro` (legacy accepted IDs during migration: `pro`, `Kinetriq Pro`).
 - App Store products: `com.kevinjones.kinetriq.pro.monthly` and `com.kevinjones.kinetriq.pro.yearly`.
-- App-level Pro access is `active RevenueCat entitlement OR active backend promo/comp entitlement OR development unlock`.
-- Free-month and discount codes should be App Store / RevenueCat offer codes where possible; unlimited free access should be validated through the Supabase `redeem-promo-code` Edge Function.
+- **App-level Pro access in shipping builds is `active RevenueCat entitlement` only.** A local `developmentUnlocked` shortcut exists **only under `#if DEBUG`** (when no RevenueCat key is configured) and can never grant access in Release. Do not reintroduce any other unlock path.
+- **In-app promo-code redemption was removed for App Store compliance (Guideline 3.1.1).** Free months, discounts, and comp access must be granted through **Apple App Store offer codes** (redeemed via `SKPaymentQueue.presentCodeRedemptionSheet()` in-app, or via the App Store) — never through app code, a text field, or a backend call that flips entitlement client-side.
+- The Supabase `redeem-promo-code` Edge Function and `promo_codes` table remain in the repo for reference/history but are **not wired to in-app entitlement**. The former `PromoCodeView` and `PromoRedemptionService` were deleted; `SubscriptionAccessState` no longer has a `backendEntitlement` field.
 - Setup references: `docs/Subscriptions.md` and `docs/WebBackend.md`.
 
 ### Rep counting conventions
@@ -144,4 +145,4 @@ Saved-video and live exercise analysis support user-selected custom alignment ov
 - [ ] Additional exercises
 - [ ] Export analysis summary
 
-Last updated: **Kinetriq 3.5.0** build **35** (first build on the new Kinetriq App Store Connect record; lineage continued from KevLines build 34).
+Last updated: **Kinetriq 3.5.0** build **39** (App Review resubmission: removed in-app promo-code unlock per Guideline 3.1.1, removed Android reference on the login screen, added Terms of Use (EULA)/Privacy links + subscription disclosure to the RevenueCat paywall, and hardened post-purchase paywall dismissal. Previous submission was build 38, rejected.).

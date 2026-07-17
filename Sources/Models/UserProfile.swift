@@ -19,40 +19,18 @@ struct AuthSession: Codable, Equatable {
     }
 }
 
-enum PromoCodeKind: String, Codable, Equatable {
-    case freeMonth = "free_month"
-    case discount
-    case unlimited
-}
-
-enum AccountEntitlementSource: String, Codable, Equatable {
-    case revenueCat = "revenuecat"
-    case promoFreeMonth = "promo_free_month"
-    case promoDiscount = "promo_discount"
-    case manualComp = "manual_comp"
-}
-
-struct AccountEntitlement: Codable, Equatable {
-    let entitlement: String
-    let source: AccountEntitlementSource
-    let startsAt: Date
-    let expiresAt: Date?
-    let active: Bool
-
-    var isCurrentlyActive: Bool {
-        guard active else { return false }
-        let now = Date()
-        guard startsAt <= now else { return false }
-        return expiresAt.map { $0 > now } ?? true
-    }
-}
-
 struct SubscriptionAccessState: Equatable {
     var hasRevenueCatEntitlement: Bool
-    var backendEntitlement: AccountEntitlement?
+    /// Local convenience unlock for development builds only. It is intentionally
+    /// ignored in Release so that Pro access is granted solely through Apple
+    /// In-App Purchase (RevenueCat) in shipping builds.
     var developmentUnlocked: Bool
 
     var hasProAccess: Bool {
-        developmentUnlocked || hasRevenueCatEntitlement || (backendEntitlement?.isCurrentlyActive == true)
+        #if DEBUG
+        return hasRevenueCatEntitlement || developmentUnlocked
+        #else
+        return hasRevenueCatEntitlement
+        #endif
     }
 }

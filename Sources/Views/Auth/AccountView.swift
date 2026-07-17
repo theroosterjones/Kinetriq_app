@@ -4,7 +4,6 @@ struct AccountView: View {
     @ObservedObject private var auth = AuthService.shared
     @ObservedObject private var purchases = PurchaseService.shared
     @State private var showingDeleteConfirmation = false
-    @State private var showingPromoCode = false
 
     var body: some View {
         Form {
@@ -30,11 +29,6 @@ struct AccountView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                if let code = purchases.redeemedPromoCode() {
-                    LabeledContent("Promo code", value: code)
-                }
-
-                Button("Redeem Promo Code") { showingPromoCode = true }
                 Button("Redeem App Store Offer Code") {
                     purchases.presentAppStoreOfferCodeRedemption()
                     Task {
@@ -56,9 +50,6 @@ struct AccountView: View {
         }
         .navigationTitle("Account")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showingPromoCode) {
-            PromoCodeView()
-        }
         .confirmationDialog(
             "Delete this account?",
             isPresented: $showingDeleteConfirmation,
@@ -74,12 +65,11 @@ struct AccountView: View {
     }
 
     private var accessLabel: String {
+        #if DEBUG
         if purchases.developmentUnlocked {
             return "Dev unlocked"
         }
-        if purchases.hasRedeemedPromoCode() {
-            return "Promo"
-        }
+        #endif
         if purchases.hasRevenueCatEntitlement {
             return "Active"
         }
