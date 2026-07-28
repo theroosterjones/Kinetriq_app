@@ -145,4 +145,4 @@ Saved-video and live exercise analysis support user-selected custom alignment ov
 - [ ] Additional exercises
 - [ ] Export analysis summary
 
-Last updated: **Kinetriq 3.5.0** build **39** (App Review resubmission: removed in-app promo-code unlock per Guideline 3.1.1, removed Android reference on the login screen, added Terms of Use (EULA)/Privacy links + subscription disclosure to the RevenueCat paywall, and hardened post-purchase paywall dismissal. Previous submission was build 38, rejected.).
+Last updated: **Kinetriq 3.5.0** build **41** (App Review resubmission: removed in-app promo-code unlock per Guideline 3.1.1, removed Android reference on the login screen, added Terms of Use (EULA)/Privacy links + subscription disclosure to the RevenueCat paywall. Build 41 fixes the "stuck on paywall after purchase" bug (Guideline 2.1(b)) by gating the app with a plain conditional swap instead of a no-op `fullScreenCover` binding and observing `Purchases.customerInfoStream` so entitlement changes always dismiss the paywall. Builds 38 and 39 were rejected; build 40 was uploaded but superseded before submission.).

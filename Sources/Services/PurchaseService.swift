@@ -58,6 +58,19 @@ final class PurchaseService: ObservableObject {
         Purchases.configure(withAPIKey: apiKey)
         isRevenueCatConfigured = true
         Task { await refreshStatus() }
+        observeCustomerInfo()
+    }
+
+    /// Continuously mirror RevenueCat's customer info so entitlement changes
+    /// (e.g. a just-completed purchase) always propagate to `hasProAccess` on the
+    /// main actor, even if a purchase callback delivers info before the entitlement
+    /// has fully propagated. This is what reliably dismisses the paywall after a buy.
+    private func observeCustomerInfo() {
+        Task { [weak self] in
+            for await info in Purchases.shared.customerInfoStream {
+                self?.updateSubscriptionStatus(from: info)
+            }
+        }
     }
 
     func identify(appUserID: String) async {

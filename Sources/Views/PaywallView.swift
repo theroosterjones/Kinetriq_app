@@ -24,11 +24,9 @@ struct PaywallView: View {
             RevenueCatUI.PaywallView(displayCloseButton: false)
                 .onPurchaseCompleted { customerInfo in
                     service.updateSubscriptionStatus(from: customerInfo)
-                    Task { await service.refreshStatus() }
                 }
                 .onRestoreCompleted { customerInfo in
                     service.updateSubscriptionStatus(from: customerInfo)
-                    Task { await service.refreshStatus() }
                 }
                 .onPurchaseFailure { error in
                     errorMessage = error.localizedDescription

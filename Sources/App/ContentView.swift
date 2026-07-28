@@ -11,14 +11,10 @@ struct ContentView: View {
                 LoginView()
             } else if purchases.isLoading {
                 loadingView
-            } else {
+            } else if purchases.hasProAccess {
                 mainTabs
-                    .fullScreenCover(isPresented: .init(
-                        get: { !purchases.hasProAccess },
-                        set: { _ in }
-                    )) {
-                        PaywallView()
-                    }
+            } else {
+                PaywallView()
             }
         }
         .tint(KColor.accent)
