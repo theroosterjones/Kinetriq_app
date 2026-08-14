@@ -22,6 +22,11 @@ final class RowAnalyzer: ExerciseAnalyzer {
     private let repCounter = RepCounter(extendedThreshold: 150, flexedThreshold: 90)
     private let tempoTracker = TempoTracker(invertPhases: true)
 
+    /// Spike-rejection velocity limits for the arm chain (see `SquatAnalyzer`).
+    /// 2D is normalized [0,1] screen space; 3D is metric meters.
+    private let armMaxSpeed2D: Float = 3.0
+    private let armMaxSpeed3D: Float = 5.0
+
     init(side: BodySide) {
         self.side = side
     }
@@ -37,9 +42,9 @@ final class RowAnalyzer: ExerciseAnalyzer {
         }
 
         let ts = landmarks.timestamp
-        let shoulder    = smoother.smooth(key: "\(activeSide)_shoulder", position: rawShoulder, timestamp: ts)
-        let elbow       = smoother.smooth(key: "\(activeSide)_elbow",    position: rawElbow,    timestamp: ts)
-        let wrist       = smoother.smooth(key: "\(activeSide)_wrist",    position: rawWrist,    timestamp: ts)
+        let shoulder    = smoother.smooth(key: "\(activeSide)_shoulder", position: rawShoulder, timestamp: ts, maxSpeed: armMaxSpeed2D)
+        let elbow       = smoother.smooth(key: "\(activeSide)_elbow",    position: rawElbow,    timestamp: ts, maxSpeed: armMaxSpeed2D)
+        let wrist       = smoother.smooth(key: "\(activeSide)_wrist",    position: rawWrist,    timestamp: ts, maxSpeed: armMaxSpeed2D)
         let hip         = smoother.smooth(key: "\(activeSide)_hip",      position: rawHip,      timestamp: ts)
         let ear         = landmarks.position(for: .ear(activeSide))
             .map { smoother.smooth(key: "\(activeSide)_ear", position: $0, timestamp: ts) }
@@ -47,9 +52,9 @@ final class RowAnalyzer: ExerciseAnalyzer {
             smoother.smooth(key: "\(activeSide.opposite)_shoulder", position: $0, timestamp: ts)
         }
 
-        let w_shoulder = landmarks.worldPosition(for: .shoulder(activeSide)).map { smoother.smooth3D(key: "\(activeSide)_shoulder", position: $0, timestamp: ts) }
-        let w_elbow    = landmarks.worldPosition(for: .elbow(activeSide))   .map { smoother.smooth3D(key: "\(activeSide)_elbow",    position: $0, timestamp: ts) }
-        let w_wrist    = landmarks.worldPosition(for: .wrist(activeSide))   .map { smoother.smooth3D(key: "\(activeSide)_wrist",    position: $0, timestamp: ts) }
+        let w_shoulder = landmarks.worldPosition(for: .shoulder(activeSide)).map { smoother.smooth3D(key: "\(activeSide)_shoulder", position: $0, timestamp: ts, maxSpeed: armMaxSpeed3D) }
+        let w_elbow    = landmarks.worldPosition(for: .elbow(activeSide))   .map { smoother.smooth3D(key: "\(activeSide)_elbow",    position: $0, timestamp: ts, maxSpeed: armMaxSpeed3D) }
+        let w_wrist    = landmarks.worldPosition(for: .wrist(activeSide))   .map { smoother.smooth3D(key: "\(activeSide)_wrist",    position: $0, timestamp: ts, maxSpeed: armMaxSpeed3D) }
         let w_hip      = landmarks.worldPosition(for: .hip(activeSide))     .map { smoother.smooth3D(key: "\(activeSide)_hip",      position: $0, timestamp: ts) }
 
         let elbowAngle: Float
@@ -79,8 +84,9 @@ final class RowAnalyzer: ExerciseAnalyzer {
         instructions.append(.line(from: shoulder, to: elbow, color: .yellow, width: 3))
         instructions.append(.line(from: elbow, to: wrist, color: .yellow, width: 3))
 
-        // Key joints
-        instructions.append(.circle(at: elbow, radius: 10, color: .red, filled: true))
+        // Key joints — elbow marker on the olecranon tip (side view) for steadier tracking.
+        let elbowTip = JointTip.position(vertex: elbow, toward: shoulder, and: wrist)
+        instructions.append(.circle(at: elbowTip, radius: 10, color: .red, filled: true))
         instructions.append(.circle(at: shoulder, radius: 10, color: .red, filled: true))
 
         // Angle labels

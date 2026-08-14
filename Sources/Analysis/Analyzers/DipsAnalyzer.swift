@@ -19,6 +19,11 @@ final class DipsAnalyzer: ExerciseAnalyzer {
     private let repCounter = RepCounter(extendedThreshold: 145, flexedThreshold: 95)
     private let tempoTracker = TempoTracker()
 
+    /// Spike-rejection velocity limits for the arm chain (see `SquatAnalyzer`).
+    /// 2D is normalized [0,1] screen space; 3D is metric meters.
+    private let armMaxSpeed2D: Float = 3.0
+    private let armMaxSpeed3D: Float = 5.0
+
     init(side: BodySide) {
         self.side = side
     }
@@ -34,8 +39,8 @@ final class DipsAnalyzer: ExerciseAnalyzer {
         }
 
         let ts = landmarks.timestamp
-        let shoulder = smoother.smooth(key: "\(side)_shoulder", position: rawShoulder, timestamp: ts)
-        let elbow = smoother.smooth(key: "\(side)_elbow", position: rawElbow, timestamp: ts)
+        let shoulder = smoother.smooth(key: "\(side)_shoulder", position: rawShoulder, timestamp: ts, maxSpeed: armMaxSpeed2D)
+        let elbow = smoother.smooth(key: "\(side)_elbow", position: rawElbow, timestamp: ts, maxSpeed: armMaxSpeed2D)
         let wrist = smoother.stabilizeAnchor(key: "\(side)_dip_wrist_anchor", position: rawWrist)
         let hip = smoother.smooth(key: "\(side)_hip", position: rawHip, timestamp: ts)
         let knee = smoother.smooth(key: "\(side)_knee", position: rawKnee, timestamp: ts)
@@ -45,9 +50,9 @@ final class DipsAnalyzer: ExerciseAnalyzer {
             .map { smoother.smooth(key: "\(side)_ear", position: $0, timestamp: ts) }
 
         let wShoulder = landmarks.worldPosition(for: .shoulder(side))
-            .map { smoother.smooth3D(key: "\(side)_shoulder", position: $0, timestamp: ts) }
+            .map { smoother.smooth3D(key: "\(side)_shoulder", position: $0, timestamp: ts, maxSpeed: armMaxSpeed3D) }
         let wElbow = landmarks.worldPosition(for: .elbow(side))
-            .map { smoother.smooth3D(key: "\(side)_elbow", position: $0, timestamp: ts) }
+            .map { smoother.smooth3D(key: "\(side)_elbow", position: $0, timestamp: ts, maxSpeed: armMaxSpeed3D) }
         let wWrist = landmarks.worldPosition(for: .wrist(side))
             .map { smoother.stabilizeAnchor3D(key: "\(side)_dip_wrist_anchor", position: $0) }
         let wHip = landmarks.worldPosition(for: .hip(side))
@@ -78,8 +83,10 @@ final class DipsAnalyzer: ExerciseAnalyzer {
         instructions.append(.line(from: hip, to: knee, color: .green, width: 3))
         instructions.append(.line(from: knee, to: ankle, color: .green, width: 3))
 
+        // Elbow marker on the olecranon tip (side view) for steadier tracking.
+        let elbowTip = JointTip.position(vertex: elbow, toward: shoulder, and: wrist)
         instructions.append(.circle(at: shoulder, radius: 10, color: .red, filled: true))
-        instructions.append(.circle(at: elbow, radius: 11, color: .red, filled: true))
+        instructions.append(.circle(at: elbowTip, radius: 11, color: .red, filled: true))
         instructions.append(.circle(at: wrist, radius: 8, color: .orange, filled: true))
         instructions.append(.circle(at: hip, radius: 9, color: .green, filled: true))
         instructions.append(.circle(at: knee, radius: 8, color: .green, filled: true))

@@ -17,6 +17,13 @@ struct AuthSession: Codable, Equatable {
         guard let expiresAt else { return false }
         return expiresAt <= Date()
     }
+
+    /// A session that carries a refresh token can be renewed without asking the
+    /// user to sign in again, so it should be treated as still-authenticated while
+    /// the access token is refreshed in the background.
+    var isRenewable: Bool {
+        refreshToken?.isEmpty == false
+    }
 }
 
 struct SubscriptionAccessState: Equatable {

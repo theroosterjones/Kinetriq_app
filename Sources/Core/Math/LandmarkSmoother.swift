@@ -64,22 +64,28 @@ final class LandmarkSmoother {
     /// Pass `landmarks.timestamp` for accurate per-frame dt (required for offline
     /// video which processes faster than real time). Omit for convenience in
     /// real-time contexts where wall-clock time is close enough.
-    func smooth(key: String, position: SIMD2<Float>, timestamp: Double? = nil) -> SIMD2<Float> {
+    /// - Parameter maxSpeed: Optional velocity limit (coordinate units per second).
+    ///   When set, a single sample can't move the filtered estimate by more than
+    ///   `maxSpeed * dt`, so one-frame MediaPipe snaps (common when a joint self-
+    ///   occludes, e.g. the knee in deep flexion) are clamped instead of yanking
+    ///   the landmark. Sustained motion still tracks normally since each frame
+    ///   grants another step.
+    func smooth(key: String, position: SIMD2<Float>, timestamp: Double? = nil, maxSpeed: Float? = nil) -> SIMD2<Float> {
         let t = timestamp ?? Date().timeIntervalSince1970
         return SIMD2<Float>(
-            filter(key: "\(key)_x", value: position.x, time: t),
-            filter(key: "\(key)_y", value: position.y, time: t)
+            filter(key: "\(key)_x", value: position.x, time: t, maxSpeed: maxSpeed),
+            filter(key: "\(key)_y", value: position.y, time: t, maxSpeed: maxSpeed)
         )
     }
 
     /// Smooth a 3D world position (angle calculations).
-    func smooth3D(key: String, position: SIMD3<Float>, timestamp: Double? = nil) -> SIMD3<Float> {
+    func smooth3D(key: String, position: SIMD3<Float>, timestamp: Double? = nil, maxSpeed: Float? = nil) -> SIMD3<Float> {
         let t = timestamp ?? Date().timeIntervalSince1970
         // Use _wx / _wy / _wz keys to stay independent from the 2D _x / _y channels
         return SIMD3<Float>(
-            filter(key: "\(key)_wx", value: position.x, time: t),
-            filter(key: "\(key)_wy", value: position.y, time: t),
-            filter(key: "\(key)_wz", value: position.z, time: t)
+            filter(key: "\(key)_wx", value: position.x, time: t, maxSpeed: maxSpeed),
+            filter(key: "\(key)_wy", value: position.y, time: t, maxSpeed: maxSpeed),
+            filter(key: "\(key)_wz", value: position.z, time: t, maxSpeed: maxSpeed)
         )
     }
 
@@ -175,14 +181,26 @@ final class LandmarkSmoother {
 
     // MARK: - 1€ Filter Core
 
-    private func filter(key: String, value: Float, time: Double) -> Float {
+    private func filter(key: String, value rawValue: Float, time: Double, maxSpeed: Float? = nil) -> Float {
         guard let prev = channels[key] else {
-            channels[key] = ChannelState(xHat: value, dxHat: 0, lastTime: time)
-            return value
+            channels[key] = ChannelState(xHat: rawValue, dxHat: 0, lastTime: time)
+            return rawValue
         }
 
         // Clamp dt to avoid division-by-zero on duplicate timestamps
         let dt = max(Float(time - prev.lastTime), 1e-6)
+
+        // Spike rejection: cap how far one sample may jump from the current estimate.
+        // This kills the "rapid drift" seen when MediaPipe momentarily snaps a
+        // self-occluded joint, while still allowing real, sustained motion through.
+        var value = rawValue
+        if let maxSpeed {
+            let maxStep = max(maxSpeed * dt, 1e-4)
+            let delta = value - prev.xHat
+            if abs(delta) > maxStep {
+                value = prev.xHat + (delta < 0 ? -maxStep : maxStep)
+            }
+        }
 
         // Low-pass filter the derivative with a fixed cutoff
         let dx    = (value - prev.xHat) / dt

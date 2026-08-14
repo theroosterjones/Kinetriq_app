@@ -21,7 +21,11 @@ final class AuthService: ObservableObject {
     }
 
     var isAuthenticated: Bool {
-        session?.isExpired == false
+        guard let session else { return false }
+        // Stay signed in across launches: a session with a refresh token is
+        // considered authenticated even if the access token has expired, because
+        // it will be renewed silently in the background.
+        return !session.isExpired || session.isRenewable
     }
 
     var currentUserID: String? {
@@ -38,6 +42,61 @@ final class AuthService: ObservableObject {
 
     func bootstrap() {
         restoreSession()
+        // Renew the access token from the stored refresh token so returning users
+        // land straight in the app instead of the login screen.
+        Task { await refreshSessionIfNeeded() }
+    }
+
+    /// Renews the access token using the stored refresh token. Called on launch and
+    /// when the app returns to the foreground so a signed-in user is never forced
+    /// to re-enter credentials. Only a definitive rejection of the refresh token
+    /// (HTTP 4xx) signs the user out; transient/network/server errors keep the
+    /// existing session so offline launches don't kick the user to login.
+    func refreshSessionIfNeeded(force: Bool = false) async {
+        guard isConfigured,
+              let current = session,
+              let refreshToken = current.refreshToken, !refreshToken.isEmpty,
+              let baseURL = AppEnvironment.supabaseURL,
+              let anonKey = AppEnvironment.supabaseAnonKey else {
+            return
+        }
+
+        // Refresh when expired, missing an expiry, or within a 5-minute safety window.
+        let needsRefresh = force || (current.expiresAt.map { $0.timeIntervalSinceNow < 300 } ?? true)
+        guard needsRefresh else { return }
+
+        var components = URLComponents(
+            url: baseURL.appendingPathComponent("auth/v1/token"),
+            resolvingAgainstBaseURL: false
+        )
+        components?.percentEncodedQuery = "grant_type=refresh_token"
+        guard let url = components?.url else { return }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(anonKey, forHTTPHeaderField: "apikey")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONEncoder().encode(["refresh_token": refreshToken])
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse else { return }
+
+            if (200..<300).contains(httpResponse.statusCode) {
+                if let refreshed = try? decoder.decode(SupabaseAuthResponse.self, from: data).authSession {
+                    session = refreshed
+                    persist(refreshed)
+                    await PurchaseService.shared.identify(appUserID: refreshed.user.id)
+                }
+            } else if (400..<500).contains(httpResponse.statusCode) {
+                // Refresh token revoked/expired — a fresh login is required.
+                clearSession()
+                await PurchaseService.shared.logOut()
+            }
+            // 5xx: leave the session intact and try again next launch/foreground.
+        } catch {
+            // Offline or transient failure — keep the session and retry later.
+        }
     }
 
     func signIn(email: String, password: String) async {
@@ -62,7 +121,8 @@ final class AuthService: ObservableObject {
         await performAuthRequest(
             path: "signup",
             query: nil,
-            body: ["email": email, "password": password]
+            body: ["email": email, "password": password],
+            isSignUp: true
         )
     }
 
@@ -109,7 +169,7 @@ final class AuthService: ObservableObject {
             )
             authError = "Password reset email sent."
         } catch {
-            authError = error.localizedDescription
+            authError = Self.userFacingMessage(for: error)
         }
     }
 
@@ -143,7 +203,7 @@ final class AuthService: ObservableObject {
         }
     }
 
-    private func performAuthRequest(path: String, query: String?, body: [String: String]) async {
+    private func performAuthRequest(path: String, query: String?, body: [String: String], isSignUp: Bool = false) async {
         isLoading = true
         authError = nil
         defer { isLoading = false }
@@ -151,12 +211,24 @@ final class AuthService: ObservableObject {
         do {
             let data = try await supabaseRequest(path: path, query: query, method: "POST", bearerToken: nil, body: body)
             let response = try decoder.decode(SupabaseAuthResponse.self, from: data)
-            let session = response.authSession
+
+            // When email confirmation is enabled, sign-up returns a user with no
+            // session (no access_token) until the address is confirmed. Surface a
+            // helpful message instead of a raw JSON decode failure.
+            guard let session = response.authSession else {
+                if isSignUp {
+                    authError = "Account created. Check your email for a confirmation link, then sign in."
+                } else {
+                    authError = "Please confirm your email before signing in. Check your inbox for the confirmation link."
+                }
+                return
+            }
+
             self.session = session
             persist(session)
             await PurchaseService.shared.identify(appUserID: session.user.id)
         } catch {
-            authError = error.localizedDescription
+            authError = Self.userFacingMessage(for: error)
         }
     }
 
@@ -229,8 +301,14 @@ final class AuthService: ObservableObject {
 
     private func restoreSession() {
         guard let data = UserDefaults.standard.data(forKey: sessionKey),
-              let restored = try? decoder.decode(AuthSession.self, from: data),
-              !restored.isExpired else {
+              let restored = try? decoder.decode(AuthSession.self, from: data) else {
+            clearSession()
+            return
+        }
+        // Keep the session if the access token is still valid, or if it can be
+        // renewed from a refresh token. Only discard a truly dead session (expired
+        // with no way to renew) so users aren't forced to log in every launch.
+        guard !restored.isExpired || restored.isRenewable else {
             clearSession()
             return
         }
@@ -307,20 +385,117 @@ final class AuthService: ObservableObject {
             throw AuthServiceError.invalidResponse
         }
         guard (200..<300).contains(httpResponse.statusCode) else {
-            let message = String(data: data, encoding: .utf8) ?? "Request failed."
-            throw AuthServiceError.requestFailed(message)
+            throw AuthServiceError.requestFailed(Self.friendlyMessage(from: data, statusCode: httpResponse.statusCode))
         }
         return data
+    }
+
+    /// Converts Supabase/GoTrue error payloads into human-readable text. Handles
+    /// both the legacy `{"error","error_description"}` and newer
+    /// `{"code","error_code","msg"}` shapes, and never surfaces raw JSON.
+    ///
+    /// Every returned string ends with a short, screenshot-able reference code so a
+    /// user can send it in for troubleshooting while still seeing plain-language
+    /// guidance about what to do next.
+    static func friendlyMessage(from data: Data, statusCode: Int) -> String {
+        let payload = try? JSONDecoder().decode(SupabaseErrorPayload.self, from: data)
+        let code = payload?.errorCode ?? payload?.error
+        let rawMessage = payload?.msg ?? payload?.errorDescription ?? payload?.message
+        let reference = "AUTH-\(statusCode)" + (code.map { "-\($0)" } ?? "")
+
+        let message: String
+        switch code {
+        case "over_email_send_rate_limit", "over_request_rate_limit", "over_sms_send_rate_limit":
+            message = "Too many attempts right now. Please wait a minute and try again."
+        case "invalid_credentials", "invalid_grant":
+            message = "Incorrect email or password. Please double-check and try again."
+        case "email_not_confirmed":
+            message = "Please confirm your email before signing in. Check your inbox for the confirmation link."
+        case "user_already_exists", "email_exists":
+            message = "An account with this email already exists. Try signing in instead."
+        case "weak_password":
+            message = "Please choose a stronger password of at least 6 characters."
+        case "validation_failed", "email_address_invalid":
+            message = "Please enter a valid email address and password."
+        default:
+            if statusCode == 429 {
+                message = "Too many attempts right now. Please wait a minute and try again."
+            } else if statusCode >= 500 {
+                message = "The sign-in server is having trouble right now. Please try again in a few minutes."
+            } else if let rawMessage, !rawMessage.isEmpty {
+                message = rawMessage
+            } else {
+                message = "Something went wrong while signing in. Please try again."
+            }
+        }
+        return withReference(message, reference)
+    }
+
+    /// Maps any thrown error into user-facing guidance plus a screenshot-able code.
+    /// HTTP failures already carry a friendly message + code (see `friendlyMessage`),
+    /// so this mainly covers connectivity and configuration problems.
+    static func userFacingMessage(for error: Error) -> String {
+        if let authError = error as? AuthServiceError {
+            switch authError {
+            case .requestFailed(let message):
+                return message
+            case .notConfigured:
+                return withReference("Sign-in is temporarily unavailable. Please try again later.", "AUTH-CONFIG")
+            case .invalidURL:
+                return withReference("Sign-in is temporarily unavailable. Please try again later.", "AUTH-URL")
+            case .invalidResponse:
+                return withReference("The server returned an unexpected response. Please try again.", "AUTH-RESP")
+            }
+        }
+        if let urlError = error as? URLError {
+            return withReference(friendlyNetworkMessage(urlError), "NET-\(urlError.errorCode)")
+        }
+        let nsError = error as NSError
+        return withReference(error.localizedDescription, "\(nsError.domain)-\(nsError.code)")
+    }
+
+    private static func friendlyNetworkMessage(_ error: URLError) -> String {
+        switch error.code {
+        case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed:
+            return "You appear to be offline. Check your internet connection and try again."
+        case .timedOut:
+            return "The request timed out. Please check your connection and try again."
+        case .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed:
+            return "Couldn't reach the sign-in server. Please try again in a few minutes."
+        default:
+            return "A network problem occurred. Please try again."
+        }
+    }
+
+    /// Appends a short reference code and screenshot prompt to a plain-language message.
+    private static func withReference(_ message: String, _ reference: String) -> String {
+        "\(message)\n\nError code: \(reference)\nPlease screenshot this and send it to support if it keeps happening."
+    }
+}
+
+private struct SupabaseErrorPayload: Decodable {
+    let error: String?
+    let errorCode: String?
+    let errorDescription: String?
+    let msg: String?
+    let message: String?
+
+    enum CodingKeys: String, CodingKey {
+        case error
+        case errorCode = "error_code"
+        case errorDescription = "error_description"
+        case msg
+        case message
     }
 }
 
 private struct EmptyBody: Encodable {}
 
 private struct SupabaseAuthResponse: Decodable {
-    let accessToken: String
+    let accessToken: String?
     let refreshToken: String?
     let expiresIn: TimeInterval?
-    let user: SupabaseUser
+    let user: SupabaseUser?
 
     enum CodingKeys: String, CodingKey {
         case accessToken = "access_token"
@@ -329,8 +504,11 @@ private struct SupabaseAuthResponse: Decodable {
         case user
     }
 
-    var authSession: AuthSession {
-        AuthSession(
+    /// Returns a session only when Supabase issued an access token. A `nil`
+    /// result means sign-up succeeded but email confirmation is still pending.
+    var authSession: AuthSession? {
+        guard let accessToken, let user else { return nil }
+        return AuthSession(
             accessToken: accessToken,
             refreshToken: refreshToken,
             expiresAt: expiresIn.map { Date().addingTimeInterval($0) },

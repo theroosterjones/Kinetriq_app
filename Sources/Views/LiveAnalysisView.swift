@@ -6,22 +6,39 @@ import os.log
 
 private let logger = Logger(subsystem: "com.kevinjones.Kinetriq", category: "LiveAnalysisView")
 
+// MARK: - Live Frame State
+
+/// High-frequency per-frame state (updates ~30–60×/second) kept on a *separate*
+/// observable object so that only the small overlay/HUD leaf views re-render each
+/// frame. If these lived on `LiveAnalysisViewModel`, the whole `LiveAnalysisView`
+/// body — including the exercise `Menu` — would be invalidated every frame, which
+/// makes menus and buttons unresponsive because the press gesture is cancelled by
+/// the constant view rebuilds.
+final class LiveFrameState: ObservableObject {
+    @Published var currentInstructions: [OverlayInstruction] = []
+    @Published var repCount: Int = 0
+    @Published var currentPhase: TempoPhase?
+    @Published var trackingWarningVisible = false
+    @Published var currentScore: Int?
+}
+
 // MARK: - Live Analysis ViewModel
 
 /// Owns the camera service, pose landmarker, and analyzer for the live pipeline.
 /// Heavy processing runs on the camera's serial capture queue; UI state is dispatched to main.
+///
+/// Only *low-frequency* control state lives here as `@Published`. Per-frame data
+/// lives on `frameState` (a plain `let`, not `@Published`) so updating it does not
+/// invalidate views that observe the view model.
 final class LiveAnalysisViewModel: ObservableObject {
 
-    @Published private(set) var currentInstructions: [OverlayInstruction] = []
-    @Published private(set) var repCount: Int = 0
-    @Published private(set) var currentPhase: TempoPhase?
+    let frameState = LiveFrameState()
+
     @Published private(set) var isRecording = false
     @Published private(set) var isAuthorized = false
-    @Published private(set) var trackingWarningVisible = false
     @Published private(set) var cameraPosition: AVCaptureDevice.Position = .back
     @Published var overlayMode: OverlayMode = .simple
     @Published var customOverlayOptions: Set<CustomOverlayOption> = []
-    @Published private(set) var currentScore: Int?
 
     let metalRenderer = MetalCameraRenderer()
 
@@ -51,8 +68,8 @@ final class LiveAnalysisViewModel: ObservableObject {
         customOverlayState.reset()
         lowTrackingStreak = 0
         DispatchQueue.main.async {
-            self.trackingWarningVisible = false
-            self.currentScore = nil
+            self.frameState.trackingWarningVisible = false
+            self.frameState.currentScore = nil
         }
     }
 
@@ -169,11 +186,12 @@ final class LiveAnalysisViewModel: ObservableObject {
         let shouldShowTrackingWarning = lowTrackingStreak >= 20
 
         DispatchQueue.main.async { [weak self] in
-            self?.currentInstructions = finalInstructions
-            self?.repCount = reps
-            self?.currentPhase = phase
-            self?.trackingWarningVisible = shouldShowTrackingWarning
-            self?.currentScore = score
+            guard let self else { return }
+            self.frameState.currentInstructions = finalInstructions
+            self.frameState.repCount = reps
+            self.frameState.currentPhase = phase
+            self.frameState.trackingWarningVisible = shouldShowTrackingWarning
+            self.frameState.currentScore = score
         }
     }
 
@@ -291,6 +309,60 @@ struct OverlayCanvas: View {
     }
 }
 
+// MARK: - Per-frame leaf views
+//
+// These observe `LiveFrameState` (the high-frequency object) so only they redraw
+// each frame. Keeping them separate from `LiveAnalysisView` is what allows the
+// exercise dropdown, segmented pickers, and record button to stay responsive.
+
+private struct LiveOverlayCanvas: View {
+    @ObservedObject var frameState: LiveFrameState
+
+    var body: some View {
+        OverlayCanvas(instructions: frameState.currentInstructions)
+            .ignoresSafeArea()
+    }
+}
+
+private struct LiveRepCountLabel: View {
+    @ObservedObject var frameState: LiveFrameState
+
+    var body: some View {
+        Text("\(frameState.repCount)")
+            .font(.system(size: 44, weight: .bold, design: .rounded))
+            .foregroundStyle(.white)
+    }
+}
+
+private struct LivePhaseLabel: View {
+    @ObservedObject var frameState: LiveFrameState
+
+    var body: some View {
+        Text(frameState.currentPhase?.rawValue.capitalized ?? "—")
+            .font(.caption.weight(.medium))
+            .foregroundStyle(.cyan)
+            .multilineTextAlignment(.trailing)
+    }
+}
+
+private struct LiveTrackingWarning: View {
+    @ObservedObject var frameState: LiveFrameState
+    let text: String
+
+    var body: some View {
+        if frameState.trackingWarningVisible {
+            Text(text)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.black)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(.yellow.opacity(0.9))
+                .clipShape(Capsule())
+                .padding(.bottom, 8)
+        }
+    }
+}
+
 // MARK: - Live Analysis View
 
 struct LiveAnalysisView: View {
@@ -346,8 +418,7 @@ struct LiveAnalysisView: View {
             MetalCameraView(renderer: viewModel.metalRenderer)
                 .ignoresSafeArea()
 
-            OverlayCanvas(instructions: viewModel.currentInstructions)
-                .ignoresSafeArea()
+            LiveOverlayCanvas(frameState: viewModel.frameState)
 
             VStack(spacing: 0) {
                 topBar
@@ -402,9 +473,15 @@ struct LiveAnalysisView: View {
 
                 if isAssessmentMode {
                     Menu {
-                        Picker("Assessment", selection: $selectedAssessmentType) {
-                            ForEach(AssessmentType.allCases) { type in
-                                Text(type.rawValue).tag(type)
+                        ForEach(AssessmentType.allCases) { type in
+                            Button {
+                                selectedAssessmentType = type
+                            } label: {
+                                if selectedAssessmentType == type {
+                                    Label(type.rawValue, systemImage: "checkmark")
+                                } else {
+                                    Text(type.rawValue)
+                                }
                             }
                         }
                     } label: {
@@ -422,9 +499,15 @@ struct LiveAnalysisView: View {
                     }
                 } else {
                     Menu {
-                        Picker("Exercise", selection: $selectedExerciseType) {
-                            ForEach(ExerciseConfig.all, id: \.type) { exercise in
-                                Text(exercise.displayName).tag(exercise.type)
+                        ForEach(ExerciseConfig.all, id: \.type) { exercise in
+                            Button {
+                                selectedExerciseType = exercise.type
+                            } label: {
+                                if selectedExerciseType == exercise.type {
+                                    Label(exercise.displayName, systemImage: "checkmark")
+                                } else {
+                                    Text(exercise.displayName)
+                                }
                             }
                         }
                     } label: {
@@ -522,18 +605,8 @@ struct LiveAnalysisView: View {
         .contentShape(RoundedRectangle(cornerRadius: 12))
     }
 
-    @ViewBuilder
     private var trackingWarningBanner: some View {
-        if viewModel.trackingWarningVisible {
-            Text(currentTrackingWarning)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.black)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(.yellow.opacity(0.9))
-                .clipShape(Capsule())
-                .padding(.bottom, 8)
-        }
+        LiveTrackingWarning(frameState: viewModel.frameState, text: currentTrackingWarning)
     }
 
     private var bottomBar: some View {
@@ -555,9 +628,7 @@ struct LiveAnalysisView: View {
                     Text("REPS")
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(.secondary)
-                    Text("\(viewModel.repCount)")
-                        .font(.system(size: 44, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                    LiveRepCountLabel(frameState: viewModel.frameState)
                 }
                 .frame(minWidth: 80, alignment: .leading)
             }
@@ -601,10 +672,7 @@ struct LiveAnalysisView: View {
                     Text("PHASE")
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(.secondary)
-                    Text(viewModel.currentPhase?.rawValue.capitalized ?? "—")
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(.cyan)
-                        .multilineTextAlignment(.trailing)
+                    LivePhaseLabel(frameState: viewModel.frameState)
                 }
                 .frame(minWidth: 80, alignment: .trailing)
             }

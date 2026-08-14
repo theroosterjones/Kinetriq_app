@@ -21,6 +21,12 @@ final class ElbowAnalyzer: ExerciseAnalyzer {
     private let repCounter = RepCounter(extendedThreshold: 140, flexedThreshold: 85)
     private let tempoTracker = TempoTracker(invertPhases: true)
 
+    /// Spike-rejection velocity limits for the arm chain (see `SquatAnalyzer`):
+    /// single-frame MediaPipe snaps (elbow "drift") are clamped while a real, fast
+    /// curl still tracks. 2D is normalized [0,1] screen space; 3D is metric meters.
+    private let armMaxSpeed2D: Float = 3.0
+    private let armMaxSpeed3D: Float = 5.0
+
     init(side: BodySide) {
         self.side = side
     }
@@ -33,9 +39,9 @@ final class ElbowAnalyzer: ExerciseAnalyzer {
         }
 
         let ts = landmarks.timestamp
-        let shoulder = smoother.smooth(key: "\(side)_shoulder", position: rawShoulder, timestamp: ts)
-        let elbow    = smoother.smooth(key: "\(side)_elbow",    position: rawElbow,    timestamp: ts)
-        let wrist    = smoother.smooth(key: "\(side)_wrist",    position: rawWrist,    timestamp: ts)
+        let shoulder = smoother.smooth(key: "\(side)_shoulder", position: rawShoulder, timestamp: ts, maxSpeed: armMaxSpeed2D)
+        let elbow    = smoother.smooth(key: "\(side)_elbow",    position: rawElbow,    timestamp: ts, maxSpeed: armMaxSpeed2D)
+        let wrist    = smoother.smooth(key: "\(side)_wrist",    position: rawWrist,    timestamp: ts, maxSpeed: armMaxSpeed2D)
 
         // Hip and ear are optional — bicep curls / tricep work are often filmed
         // tight enough to crop the lower body. If the hip lands inside the
@@ -46,9 +52,9 @@ final class ElbowAnalyzer: ExerciseAnalyzer {
         let ear = landmarks.position(for: .ear(side))
             .map { smoother.smooth(key: "\(side)_ear", position: $0, timestamp: ts) }
 
-        let w_shoulder = landmarks.worldPosition(for: .shoulder(side)).map { smoother.smooth3D(key: "\(side)_shoulder", position: $0, timestamp: ts) }
-        let w_elbow    = landmarks.worldPosition(for: .elbow(side))   .map { smoother.smooth3D(key: "\(side)_elbow",    position: $0, timestamp: ts) }
-        let w_wrist    = landmarks.worldPosition(for: .wrist(side))   .map { smoother.smooth3D(key: "\(side)_wrist",    position: $0, timestamp: ts) }
+        let w_shoulder = landmarks.worldPosition(for: .shoulder(side)).map { smoother.smooth3D(key: "\(side)_shoulder", position: $0, timestamp: ts, maxSpeed: armMaxSpeed3D) }
+        let w_elbow    = landmarks.worldPosition(for: .elbow(side))   .map { smoother.smooth3D(key: "\(side)_elbow",    position: $0, timestamp: ts, maxSpeed: armMaxSpeed3D) }
+        let w_wrist    = landmarks.worldPosition(for: .wrist(side))   .map { smoother.smooth3D(key: "\(side)_wrist",    position: $0, timestamp: ts, maxSpeed: armMaxSpeed3D) }
 
         let elbowAngle: Float
         if let ws = w_shoulder, let we = w_elbow, let ww = w_wrist {
@@ -74,9 +80,10 @@ final class ElbowAnalyzer: ExerciseAnalyzer {
         instructions.append(.line(from: shoulder, to: elbow, color: .yellow, width: 3))
         instructions.append(.line(from: elbow, to: wrist, color: .yellow, width: 3))
 
-        // Joints
+        // Joints — elbow marker on the olecranon tip (side view) for steadier tracking.
+        let elbowTip = JointTip.position(vertex: elbow, toward: shoulder, and: wrist)
         instructions.append(.circle(at: shoulder, radius: 10, color: .red,    filled: true))
-        instructions.append(.circle(at: elbow,    radius: 12, color: .red,    filled: true))
+        instructions.append(.circle(at: elbowTip, radius: 12, color: .red,    filled: true))
         instructions.append(.circle(at: wrist,    radius: 8,  color: .orange, filled: true))
 
         // Angle label near elbow

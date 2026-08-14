@@ -3,7 +3,13 @@ import RevenueCatUI
 import SwiftUI
 
 struct PaywallView: View {
+    /// When `true` the paywall is presented as a dismissable sheet for changing or
+    /// upgrading an existing plan, rather than as the mandatory access gate. The
+    /// gate never shows a close button (App Store Guideline 2.1(a)).
+    var isManagement: Bool = false
+
     @ObservedObject private var service = PurchaseService.shared
+    @Environment(\.dismiss) private var dismiss
     @State private var selectedPlan: PlanType = .yearly
     @State private var isPurchasing = false
     @State private var isRestoring = false
@@ -12,33 +18,47 @@ struct PaywallView: View {
     enum PlanType { case monthly, yearly }
 
     var body: some View {
-        if service.hasConfiguredAPIKey {
-            revenueCatPaywall
-        } else {
-            fallbackPaywall
+        Group {
+            if service.hasConfiguredAPIKey {
+                revenueCatPaywall
+            } else {
+                fallbackPaywall
+            }
+        }
+        .task {
+            // On the mandatory gate, try to recover an existing subscription that
+            // isn't yet linked to this account so returning subscribers skip the
+            // paywall automatically.
+            if !isManagement {
+                await service.recoverEntitlementsIfNeeded()
+            }
         }
     }
 
     private var revenueCatPaywall: some View {
         ZStack(alignment: .topTrailing) {
-            RevenueCatUI.PaywallView(displayCloseButton: false)
+            RevenueCatUI.PaywallView(displayCloseButton: isManagement)
                 .onPurchaseCompleted { customerInfo in
                     service.updateSubscriptionStatus(from: customerInfo)
+                    if isManagement { dismiss() }
                 }
                 .onRestoreCompleted { customerInfo in
                     service.updateSubscriptionStatus(from: customerInfo)
+                    if isManagement { dismiss() }
                 }
                 .onPurchaseFailure { error in
-                    errorMessage = error.localizedDescription
+                    errorMessage = PurchaseService.userFacingMessage(for: error)
                 }
                 .onRestoreFailure { error in
-                    errorMessage = error.localizedDescription
+                    errorMessage = PurchaseService.userFacingMessage(for: error)
                 }
                 .safeAreaInset(edge: .bottom) { legalOverlay }
 
-            accessOptionsMenu
-                .padding(.top, 16)
-                .padding(.trailing, 16)
+            if !isManagement {
+                accessOptionsMenu
+                    .padding(.top, 16)
+                    .padding(.trailing, 16)
+            }
         }
         .alert("Something went wrong", isPresented: .init(
             get: { errorMessage != nil },
@@ -77,13 +97,25 @@ struct PaywallView: View {
     }
 
     private var fallbackPaywall: some View {
-        ZStack {
+        ZStack(alignment: .topTrailing) {
             LinearGradient(
                 colors: [Color.black, Color(white: 0.07)],
                 startPoint: .top,
                 endPoint: .bottom
             )
             .ignoresSafeArea()
+
+            if isManagement {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundStyle(.white.opacity(0.7))
+                        .padding(16)
+                }
+                .zIndex(1)
+            }
 
             ScrollView {
                 VStack(spacing: 28) {
@@ -192,8 +224,9 @@ struct PaywallView: View {
                 guard let package = selectedPackage else { return }
                 do {
                     try await service.purchase(package)
+                    if isManagement { dismiss() }
                 } catch {
-                    errorMessage = error.localizedDescription
+                    errorMessage = PurchaseService.userFacingMessage(for: error)
                 }
             }
         } label: {
@@ -223,7 +256,7 @@ struct PaywallView: View {
                     do {
                         try await service.restorePurchases()
                     } catch {
-                        errorMessage = error.localizedDescription
+                        errorMessage = PurchaseService.userFacingMessage(for: error)
                     }
                 }
             } label: {

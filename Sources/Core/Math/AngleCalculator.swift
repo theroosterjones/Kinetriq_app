@@ -90,3 +90,41 @@ struct AngleCalculator {
         return bestPoint
     }
 }
+
+/// Geometry helper for drawing a joint marker on the bony "tip" of a bent joint —
+/// the olecranon (point of the elbow) or the patella/point of the knee — instead
+/// of the anatomical rotation center MediaPipe reports.
+///
+/// In the sagittal (side) view the tip sits on the convex side of the bend, which
+/// is the direction opposite the interior bisector of the two adjacent limb
+/// segments. Tracking the tip reads as more stable and anatomically correct on
+/// screen; it is display-only and never used for angle or rep calculations.
+enum JointTip {
+
+    /// - Parameters:
+    ///   - vertex: the joint landmark (elbow or knee).
+    ///   - a, b: the two adjacent joints (e.g. shoulder & wrist, or hip & ankle).
+    ///   - offset: fraction of the shorter adjacent segment to push outward.
+    /// - Returns: the offset tip position, or `vertex` when the limb is nearly
+    ///   straight (no well-defined tip direction) or the input is degenerate.
+    static func position(
+        vertex: SIMD2<Float>,
+        toward a: SIMD2<Float>,
+        and b: SIMD2<Float>,
+        offset: Float = 0.18
+    ) -> SIMD2<Float> {
+        let v1 = a - vertex
+        let v2 = b - vertex
+        let l1 = simd_length(v1)
+        let l2 = simd_length(v2)
+        guard l1 > 1e-5, l2 > 1e-5 else { return vertex }
+
+        let bisector = (v1 / l1) + (v2 / l2)
+        let bl = simd_length(bisector)
+        // Near-straight limb → the tip direction is undefined; stay on the vertex.
+        guard bl > 1e-3 else { return vertex }
+
+        let outward = -(bisector / bl)
+        return vertex + outward * (offset * min(l1, l2))
+    }
+}

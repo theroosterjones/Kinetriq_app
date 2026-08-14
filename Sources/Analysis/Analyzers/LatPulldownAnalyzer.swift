@@ -13,9 +13,23 @@ final class LatPulldownAnalyzer: ExerciseAnalyzer {
     }
 
     private let smoother = LandmarkSmoother()
-    // invertPhases: true — pulling bar down closes the elbow (angle ↓) = concentric.
-    private let repCounter = RepCounter(extendedThreshold: 150, flexedThreshold: 80)
+    // Reps are driven by SHOULDER extension (angle of upper arm vs. the torso/back
+    // line: hip→shoulder→elbow), which has a large, reliable range in a lat pulldown
+    // (arms overhead ≈ 150°+, elbows pulled to the sides ≈ 40°). Elbow flexion was
+    // unreliable here: world-landmark arm extension tops out near 140–150°, so the
+    // old extendedThreshold of 150° was rarely reached and no reps were counted.
+    //
+    // invertPhases: true — pulling the bar down decreases the shoulder angle
+    // (angle ↓) = concentric.
+    private let repCounter = RepCounter(extendedThreshold: 120, flexedThreshold: 70)
     private let tempoTracker = TempoTracker(invertPhases: true)
+
+    /// Velocity limits (coordinate units/second) for the arm chain, matching the
+    /// squat leg-chain spike rejection: single-frame MediaPipe snaps (the elbow
+    /// "drift" in deep flexion) are clamped while a real, fast pull still tracks.
+    /// 2D is normalized [0,1] screen space; 3D is metric meters.
+    private let armMaxSpeed2D: Float = 3.0
+    private let armMaxSpeed3D: Float = 5.0
 
     init(side: BodySide) {
         self.side = side
@@ -30,17 +44,17 @@ final class LatPulldownAnalyzer: ExerciseAnalyzer {
         }
 
         let ts = landmarks.timestamp
-        let shoulder = smoother.smooth(key: "\(side)_shoulder", position: rawShoulder, timestamp: ts)
-        let elbow    = smoother.smooth(key: "\(side)_elbow",    position: rawElbow,    timestamp: ts)
-        let wrist    = smoother.smooth(key: "\(side)_wrist",    position: rawWrist,    timestamp: ts)
-        let hip      = smoother.smooth(key: "\(side)_hip",      position: rawHip,      timestamp: ts)
+        let shoulder = smoother.smooth(key: "\(side)_shoulder", position: rawShoulder, timestamp: ts, maxSpeed: armMaxSpeed2D)
+        let elbow    = smoother.smooth(key: "\(side)_elbow",    position: rawElbow,    timestamp: ts, maxSpeed: armMaxSpeed2D)
+        let wrist    = smoother.smooth(key: "\(side)_wrist",    position: rawWrist,    timestamp: ts, maxSpeed: armMaxSpeed2D)
+        let hip      = smoother.smooth(key: "\(side)_hip",      position: rawHip,      timestamp: ts, maxSpeed: armMaxSpeed2D)
         let ear      = landmarks.position(for: .ear(side))
             .map { smoother.smooth(key: "\(side)_ear", position: $0, timestamp: ts) }
 
-        let w_shoulder = landmarks.worldPosition(for: .shoulder(side)).map { smoother.smooth3D(key: "\(side)_shoulder", position: $0, timestamp: ts) }
-        let w_elbow    = landmarks.worldPosition(for: .elbow(side))   .map { smoother.smooth3D(key: "\(side)_elbow",    position: $0, timestamp: ts) }
-        let w_wrist    = landmarks.worldPosition(for: .wrist(side))   .map { smoother.smooth3D(key: "\(side)_wrist",    position: $0, timestamp: ts) }
-        let w_hip      = landmarks.worldPosition(for: .hip(side))     .map { smoother.smooth3D(key: "\(side)_hip",      position: $0, timestamp: ts) }
+        let w_shoulder = landmarks.worldPosition(for: .shoulder(side)).map { smoother.smooth3D(key: "\(side)_shoulder", position: $0, timestamp: ts, maxSpeed: armMaxSpeed3D) }
+        let w_elbow    = landmarks.worldPosition(for: .elbow(side))   .map { smoother.smooth3D(key: "\(side)_elbow",    position: $0, timestamp: ts, maxSpeed: armMaxSpeed3D) }
+        let w_wrist    = landmarks.worldPosition(for: .wrist(side))   .map { smoother.smooth3D(key: "\(side)_wrist",    position: $0, timestamp: ts, maxSpeed: armMaxSpeed3D) }
+        let w_hip      = landmarks.worldPosition(for: .hip(side))     .map { smoother.smooth3D(key: "\(side)_hip",      position: $0, timestamp: ts, maxSpeed: armMaxSpeed3D) }
 
         let elbowAngle: Float
         if let ws = w_shoulder, let we = w_elbow, let ww = w_wrist {
@@ -56,7 +70,8 @@ final class LatPulldownAnalyzer: ExerciseAnalyzer {
             shoulderAngle = AngleCalculator.angle(a: hip, b: shoulder, c: elbow)
         }
 
-        repCounter.update(angle: elbowAngle, timestamp: ts)
+        // Shoulder angle drives rep counting and tempo (see thresholds above).
+        repCounter.update(angle: shoulderAngle, timestamp: ts)
 
         var instructions: [OverlayInstruction] = []
 
@@ -69,8 +84,10 @@ final class LatPulldownAnalyzer: ExerciseAnalyzer {
         instructions.append(.line(from: shoulder, to: elbow, color: .yellow, width: 3))
         instructions.append(.line(from: elbow, to: wrist, color: .yellow, width: 3))
 
-        // Key joints
-        instructions.append(.circle(at: elbow, radius: 10, color: .red, filled: true))
+        // Key joints — draw the elbow marker on the point of the elbow (olecranon)
+        // rather than the rotation center, which reads as steadier in the side view.
+        let elbowTip = JointTip.position(vertex: elbow, toward: shoulder, and: wrist)
+        instructions.append(.circle(at: elbowTip, radius: 10, color: .red, filled: true))
         instructions.append(.circle(at: shoulder, radius: 10, color: .red, filled: true))
 
         // Angle labels
@@ -85,12 +102,12 @@ final class LatPulldownAnalyzer: ExerciseAnalyzer {
 
         return FrameAnalysis(
             angles: [
-                JointAngle(joint: .elbow, degrees: elbowAngle),
-                JointAngle(joint: .shoulder, degrees: shoulderAngle)
+                JointAngle(joint: .shoulder, degrees: shoulderAngle),
+                JointAngle(joint: .elbow, degrees: elbowAngle)
             ],
             repCount: repCounter.count,
             repState: repCounter.state,
-            tempoPhase: tempoTracker.update(angle: elbowAngle, timestamp: ts),
+            tempoPhase: tempoTracker.update(angle: shoulderAngle, timestamp: ts),
             overlayInstructions: instructions
         )
     }

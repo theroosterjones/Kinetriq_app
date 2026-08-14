@@ -7,6 +7,7 @@ struct SettingsView: View {
     @State private var showAdvanced = false
     @State private var isRestoring = false
     @State private var restoreMessage: String?
+    @State private var showManagePlan = false
 
     var body: some View {
         NavigationStack {
@@ -99,6 +100,9 @@ struct SettingsView: View {
         } message: {
             Text(restoreMessage ?? "")
         }
+        .sheet(isPresented: $showManagePlan) {
+            PaywallView(isManagement: true)
+        }
     }
 
     private var brandHeader: some View {
@@ -145,7 +149,7 @@ struct SettingsView: View {
     }
 
     private var subscriptionSection: some View {
-        Section("Subscription") {
+        Section {
             HStack {
                 Label(
                     purchases.hasProAccess ? "Kinetriq Pro" : "No active subscription",
@@ -158,6 +162,11 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
+            Button(purchases.hasProAccess ? "Change or Upgrade Plan" : "View Plans") {
+                showManagePlan = true
+            }
+            .foregroundStyle(KColor.accent)
+
             Button("Restore Purchases") {
                 Task {
                     isRestoring = true
@@ -166,7 +175,8 @@ struct SettingsView: View {
                         try await purchases.restorePurchases()
                         restoreMessage = "Purchases restored successfully."
                     } catch {
-                        restoreMessage = error.localizedDescription
+                        restoreMessage = PurchaseService.userFacingMessage(for: error)
+                            ?? "Restore cancelled."
                     }
                 }
             }
@@ -186,6 +196,10 @@ struct SettingsView: View {
                     UIApplication.shared.open(url)
                 }
             }
+        } header: {
+            Text("Subscription")
+        } footer: {
+            Text("Switch between monthly and yearly anytime with Change or Upgrade Plan. Cancel or change billing in Manage Apple Subscription. If you already subscribed but still see the paywall, tap Restore Purchases.")
         }
     }
 

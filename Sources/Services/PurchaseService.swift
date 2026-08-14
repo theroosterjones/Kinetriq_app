@@ -121,6 +121,36 @@ final class PurchaseService: ObservableObject {
         }
     }
 
+    private var didAttemptSilentRecovery = false
+
+    /// Recovers Pro access for a returning subscriber whose active Apple-ID
+    /// subscription isn't yet linked to the current RevenueCat app user ID
+    /// (e.g. it was purchased before logging in, or under a previous session).
+    ///
+    /// Called when the paywall appears: first a cheap `customerInfo` refresh, then
+    /// — only if still locked out — a one-time silent restore that transfers the
+    /// Apple-ID purchase onto this user so they don't have to see the paywall
+    /// again. Errors are swallowed; the manual "Restore Purchases" button remains
+    /// as an explicit fallback.
+    func recoverEntitlementsIfNeeded() async {
+        guard isRevenueCatConfigured else {
+            isLoading = false
+            return
+        }
+
+        await refreshStatus()
+
+        guard !hasProAccess, !didAttemptSilentRecovery else { return }
+        didAttemptSilentRecovery = true
+
+        do {
+            let info = try await Purchases.shared.restorePurchases()
+            updateSubscriptionStatus(from: info)
+        } catch {
+            // Silent by design — surfaced only through the manual Restore button.
+        }
+    }
+
     func fetchOfferings() async {
         guard isRevenueCatConfigured else { return }
         do {
@@ -156,6 +186,58 @@ final class PurchaseService: ObservableObject {
 
     func presentAppStoreOfferCodeRedemption() {
         SKPaymentQueue.default().presentCodeRedemptionSheet()
+    }
+
+    /// Turns a StoreKit / RevenueCat error into plain-language guidance plus a
+    /// screenshot-able reference code. Returns `nil` when the user simply
+    /// cancelled, so callers can silently dismiss instead of showing an alert.
+    static func userFacingMessage(for error: Error) -> String? {
+        if let restoreError = error as? RestoreError {
+            let reference: String
+            switch restoreError {
+            case .revenueCatNotConfigured: reference = "IAP-CONFIG"
+            case .noPurchasesFound: reference = "IAP-NORESTORE"
+            }
+            return withReference(restoreError.errorDescription ?? "Something went wrong.", reference)
+        }
+
+        let nsError = error as NSError
+        if nsError.domain == ErrorCode.errorDomain, let code = ErrorCode(rawValue: nsError.code) {
+            let message: String
+            switch code {
+            case .purchaseCancelledError:
+                return nil
+            case .storeProblemError:
+                message = "The App Store had a problem completing your request. Please try again in a moment."
+            case .purchaseNotAllowedError:
+                message = "Purchases aren't allowed on this device. Check Screen Time or restrictions, then try again."
+            case .paymentPendingError:
+                message = "Your purchase is pending approval (for example, Ask to Buy). You'll get access as soon as it's approved."
+            case .productAlreadyPurchasedError:
+                message = "You're already subscribed on this Apple ID. Tap Restore Purchases to unlock access."
+            case .receiptAlreadyInUseError, .receiptInUseByOtherSubscriberError:
+                message = "This subscription is already active on a different account. Sign in with that account or contact support."
+            case .networkError, .offlineConnectionError:
+                message = "Couldn't reach the App Store. Check your internet connection and try again."
+            case .productNotAvailableForPurchaseError:
+                message = "This subscription isn't available right now. Please try again later."
+            case .configurationError, .invalidAppleSubscriptionKeyError, .invalidCredentialsError:
+                message = "Subscriptions are temporarily unavailable. Please try again later."
+            default:
+                message = "We couldn't complete your request. Please try again."
+            }
+            return withReference(message, "IAP-\(code.rawValue) (\(code))")
+        }
+
+        if let urlError = error as? URLError {
+            return withReference("Couldn't reach the App Store. Check your connection and try again.", "NET-\(urlError.errorCode)")
+        }
+
+        return withReference(error.localizedDescription, "\(nsError.domain)-\(nsError.code)")
+    }
+
+    private static func withReference(_ message: String, _ reference: String) -> String {
+        "\(message)\n\nError code: \(reference)\nPlease screenshot this and send it to support if it keeps happening."
     }
 
     enum RestoreError: LocalizedError {

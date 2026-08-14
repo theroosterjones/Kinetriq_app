@@ -26,6 +26,14 @@ final class SquatAnalyzer: ExerciseAnalyzer {
     private let minVertexVisibility: Float = 0.5
     private var lastValidKneeAngle: Float?
 
+    /// Velocity limits (coordinate units/second) for the leg chain. In deep knee
+    /// flexion the thigh and shin overlap, so MediaPipe periodically snaps the knee
+    /// to a wrong spot for a frame or two. These caps reject those single-frame
+    /// jumps while still tracking a real, fast squat. 2D is normalized [0,1] screen
+    /// space; 3D is metric meters.
+    private let legMaxSpeed2D: Float = 2.5
+    private let legMaxSpeed3D: Float = 4.0
+
     init(side: BodySide) {
         self.side = side
     }
@@ -38,9 +46,9 @@ final class SquatAnalyzer: ExerciseAnalyzer {
         }
 
         let ts = landmarks.timestamp
-        let hip   = smoother.smooth(key: "\(side)_hip",   position: rawHip,   timestamp: ts)
-        let knee  = smoother.smooth(key: "\(side)_knee",  position: rawKnee,  timestamp: ts)
-        let ankle = smoother.smooth(key: "\(side)_ankle", position: rawAnkle, timestamp: ts)
+        let hip   = smoother.smooth(key: "\(side)_hip",   position: rawHip,   timestamp: ts, maxSpeed: legMaxSpeed2D)
+        let knee  = smoother.smooth(key: "\(side)_knee",  position: rawKnee,  timestamp: ts, maxSpeed: legMaxSpeed2D)
+        let ankle = smoother.smooth(key: "\(side)_ankle", position: rawAnkle, timestamp: ts, maxSpeed: legMaxSpeed2D)
 
         let shoulder = landmarks.position(for: .shoulder(side))
             .map { smoother.smooth(key: "\(side)_shoulder", position: $0, timestamp: ts) }
@@ -48,9 +56,9 @@ final class SquatAnalyzer: ExerciseAnalyzer {
             .map { smoother.smooth(key: "\(side)_ear", position: $0, timestamp: ts) }
 
         let w_shoulder = landmarks.worldPosition(for: .shoulder(side)).map { smoother.smooth3D(key: "\(side)_shoulder", position: $0, timestamp: ts) }
-        let w_hip   = landmarks.worldPosition(for: .hip(side))  .map { smoother.smooth3D(key: "\(side)_hip",   position: $0, timestamp: ts) }
-        let w_knee  = landmarks.worldPosition(for: .knee(side)) .map { smoother.smooth3D(key: "\(side)_knee",  position: $0, timestamp: ts) }
-        let w_ankle = landmarks.worldPosition(for: .ankle(side)).map { smoother.smooth3D(key: "\(side)_ankle", position: $0, timestamp: ts) }
+        let w_hip   = landmarks.worldPosition(for: .hip(side))  .map { smoother.smooth3D(key: "\(side)_hip",   position: $0, timestamp: ts, maxSpeed: legMaxSpeed3D) }
+        let w_knee  = landmarks.worldPosition(for: .knee(side)) .map { smoother.smooth3D(key: "\(side)_knee",  position: $0, timestamp: ts, maxSpeed: legMaxSpeed3D) }
+        let w_ankle = landmarks.worldPosition(for: .ankle(side)).map { smoother.smooth3D(key: "\(side)_ankle", position: $0, timestamp: ts, maxSpeed: legMaxSpeed3D) }
 
         let measuredKneeAngle: Float
         if let wh = w_hip, let wk = w_knee, let wa = w_ankle {
@@ -99,8 +107,10 @@ final class SquatAnalyzer: ExerciseAnalyzer {
         instructions.append(.line(from: hip, to: knee, color: .green, width: 3))
         instructions.append(.line(from: knee, to: ankle, color: .green, width: 3))
 
-        // Key joints
-        instructions.append(.circle(at: knee, radius: 12, color: .red, filled: true))
+        // Key joints — draw the knee marker on the point of the knee (patella) in
+        // the side view rather than the rotation center, which reads as steadier.
+        let kneeTip = JointTip.position(vertex: knee, toward: hip, and: ankle)
+        instructions.append(.circle(at: kneeTip, radius: 12, color: .red, filled: true))
         instructions.append(.circle(at: hip, radius: 10, color: .yellow, filled: true))
         instructions.append(.circle(at: ankle, radius: 10, color: .yellow, filled: true))
         if let shoulder {

@@ -18,7 +18,10 @@ struct KinetriqApp: App {
         }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
-            Task { await PurchaseService.shared.refreshStatus() }
+            Task {
+                await AuthService.shared.refreshSessionIfNeeded()
+                await PurchaseService.shared.refreshStatus()
+            }
         }
     }
 }
