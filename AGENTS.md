@@ -154,7 +154,10 @@ Saved-video and live exercise analysis support user-selected custom alignment ov
 - [ ] Additional exercises
 - [ ] Export analysis summary
 
-Last updated: **Kinetriq 3.5.3** build **45** (feature/bugfix release). Changes vs 3.5.2/43:
+Last updated: **Kinetriq 3.5.3** build **46** (feature/bugfix release). Changes vs 3.5.3/45:
+1. **Custom overlay smoothing** — center-foot, forearm, lower-leg, and back alignment lines now share `CustomOverlayState` smoothing: planted points (foot, ankle) lock against MediaPipe jitter; moving joints use the 1€ filter plus the same 2D spike caps as the analyzers (leg 2.5, arm 3.0) so extended guide lines no longer snap.
+
+History: **3.5.3** build **45** (feature/bugfix). Changes vs 3.5.2/43:
 1. **Banded ROM consistency scoring** — peak-angle SD maps to discrete ROM scores: 0–1.5° → 100, 2–3° → 90, 4–5° → 80, 6–7° → 70, 8–10° → 50, 11–12° → 40, 12–13° → 30, 14–15° → 20, above 15° → 0.
 2. **Fatigue is not a score penalty** — concentric duration is excluded from tempo consistency so a set that slows on the way up no longer loses points. Coaching still notes concentric slowing as fatigue and a challenging set.
 3. **Fast-eccentric control caveat** — reps with an eccentric of 1.0 s or faster subtract up to 25 points (scaled by how many reps are rushed) and get a readout that the reps lack control.

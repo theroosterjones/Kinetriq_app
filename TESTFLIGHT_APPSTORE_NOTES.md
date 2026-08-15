@@ -2,6 +2,12 @@
 
 This document tracks project changes made to get KevLines successfully uploadable to TestFlight and aligned with App Store Connect requirements.
 
+## 2026-08-15 — Kinetriq 3.5.3 (46)
+
+### TestFlight
+- Marketing version `3.5.3`, build `46`.
+- Custom alignment overlays (center foot, forearm, lower leg, back) now use planted-anchor lock + 1€ / spike-rejection smoothing so guide lines no longer flicker on MediaPipe snaps.
+
 ## 2026-08-15 — Kinetriq 3.5.3 (45)
 
 ### TestFlight / App Store Connect

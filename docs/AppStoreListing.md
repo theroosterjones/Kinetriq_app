@@ -86,7 +86,8 @@ form,lifting,squat,deadlift,workout,gym,rep counter,tempo,pose,posture,mobility,
 > Form score now grades depth consistency in finer bands, no longer penalizes a
 > concentric that slows as the set gets hard, and deducts for eccentrics of 1
 > second or faster. Coaching notes call out a challenging set versus reps that
-> lack control.
+> lack control. Custom alignment overlays are smoother and no longer snap when
+> pose tracking flickers.
 
 ### First public release
 

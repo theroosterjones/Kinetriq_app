@@ -31,21 +31,33 @@ enum CustomOverlayBuilder {
             }
         }
 
-        if options.contains(.forearmAlignment),
-           let wrist = landmarks.position(for: .wrist(side)),
-           let elbow = landmarks.position(for: .elbow(side)) {
-            instructions.append(.extendedLine(from: wrist, through: elbow, color: .cyan, width: 2))
+        if options.contains(.forearmAlignment) {
+            if let instruction = state?.forearmInstruction(landmarks: landmarks, side: side) {
+                instructions.append(instruction)
+            } else if let wrist = landmarks.position(for: .wrist(side)),
+                      let elbow = landmarks.position(for: .elbow(side)) {
+                instructions.append(.extendedLine(from: wrist, through: elbow, color: .cyan, width: 2))
+            }
         }
 
-        if options.contains(.lowerLegAlignment),
-           let ankle = landmarks.position(for: .ankle(side)),
-           let knee = landmarks.position(for: .knee(side)) {
-            instructions.append(.extendedLine(from: ankle, through: knee, color: .cyan, width: 2))
+        if options.contains(.lowerLegAlignment) {
+            if let instruction = state?.lowerLegInstruction(landmarks: landmarks, side: side) {
+                instructions.append(instruction)
+            } else if let ankle = landmarks.position(for: .ankle(side)),
+                      let knee = landmarks.position(for: .knee(side)) {
+                instructions.append(.extendedLine(from: ankle, through: knee, color: .cyan, width: 2))
+            }
         }
 
         if options.contains(.backAlignment) {
-            if usesFrontalBackAlignment(exerciseType: exerciseType),
-               let line = frontalSpineLine(landmarks: landmarks) {
+            if let instruction = state?.backInstruction(
+                landmarks: landmarks,
+                side: side,
+                exerciseType: exerciseType
+            ) {
+                instructions.append(instruction)
+            } else if usesFrontalBackAlignment(exerciseType: exerciseType),
+                      let line = frontalSpineLine(landmarks: landmarks) {
                 instructions.append(.extendedLine(from: line.hip, through: line.shoulder, color: .cyan, width: 2))
             } else if let hip = landmarks.position(for: .hip(side)),
                       let shoulder = landmarks.position(for: .shoulder(side)) {
@@ -87,7 +99,7 @@ enum CustomOverlayBuilder {
         point - roomVerticalDirection(landmarks: landmarks, side: side) * 0.1
     }
 
-    private static func usesFrontalBackAlignment(exerciseType: ExerciseType?) -> Bool {
+    fileprivate static func usesFrontalBackAlignment(exerciseType: ExerciseType?) -> Bool {
         switch exerciseType {
         case .hipHingeBack, .latPulldownFront, .overheadPress:
             return true
@@ -96,7 +108,7 @@ enum CustomOverlayBuilder {
         }
     }
 
-    private static func frontalSpineLine(landmarks: PoseResult) -> (hip: SIMD2<Float>, shoulder: SIMD2<Float>)? {
+    fileprivate static func frontalSpineLine(landmarks: PoseResult) -> (hip: SIMD2<Float>, shoulder: SIMD2<Float>)? {
         guard let leftHip = landmarks.position(for: .hip(.left)),
               let rightHip = landmarks.position(for: .hip(.right)),
               let leftShoulder = landmarks.position(for: .shoulder(.left)),
@@ -113,17 +125,150 @@ enum CustomOverlayBuilder {
 
 final class CustomOverlayState {
     private var centerFootTrackers: [BodySide: CenterFootTracker] = [:]
+    private let smoother = LandmarkSmoother()
+
+    /// Same 2D spike caps as the side-view analyzers. One-frame MediaPipe snaps
+    /// cannot yank an extended alignment line.
+    private let legMaxSpeed2D: Float = 2.5
+    private let armMaxSpeed2D: Float = 3.0
 
     func reset() {
         centerFootTrackers.removeAll()
+        smoother.reset()
     }
 
     func centerFootInstruction(landmarks: PoseResult, side: BodySide) -> OverlayInstruction? {
         var tracker = centerFootTrackers[side] ?? CenterFootTracker()
         defer { centerFootTrackers[side] = tracker }
 
-        guard let line = tracker.line(landmarks: landmarks, side: side) else { return nil }
+        guard let rawPoint = CustomOverlayBuilder.centerFootPosition(landmarks: landmarks, side: side) else {
+            return tracker.lockedInstruction()
+        }
+
+        let ts = landmarks.timestamp
+        let point = smoother.stabilizeAnchor(
+            key: "\(side)_overlay_foot_anchor",
+            position: rawPoint
+        )
+        let direction = smoothedTorsoDirection(landmarks: landmarks, side: side, timestamp: ts)
+        guard let line = tracker.update(point: point, direction: direction) else { return nil }
         return .extendedLine(from: line.from, through: line.through, color: .magenta, width: 2)
+    }
+
+    func forearmInstruction(landmarks: PoseResult, side: BodySide) -> OverlayInstruction? {
+        guard let rawWrist = landmarks.position(for: .wrist(side)),
+              let rawElbow = landmarks.position(for: .elbow(side)) else {
+            return nil
+        }
+
+        let ts = landmarks.timestamp
+        let wrist = smoother.smooth(
+            key: "\(side)_overlay_wrist",
+            position: rawWrist,
+            timestamp: ts,
+            maxSpeed: armMaxSpeed2D
+        )
+        let elbow = smoother.smooth(
+            key: "\(side)_overlay_elbow",
+            position: rawElbow,
+            timestamp: ts,
+            maxSpeed: armMaxSpeed2D
+        )
+        return .extendedLine(from: wrist, through: elbow, color: .cyan, width: 2)
+    }
+
+    /// Planted ankle + spike-rejected knee so the infinite shin line stays
+    /// accurate through the squat without flickering when MediaPipe snaps.
+    func lowerLegInstruction(landmarks: PoseResult, side: BodySide) -> OverlayInstruction? {
+        guard let rawAnkle = landmarks.position(for: .ankle(side)),
+              let rawKnee = landmarks.position(for: .knee(side)) else {
+            return nil
+        }
+
+        let ts = landmarks.timestamp
+        let ankle = smoother.stabilizeAnchor(
+            key: "\(side)_overlay_ankle_anchor",
+            position: rawAnkle
+        )
+        let knee = smoother.smooth(
+            key: "\(side)_overlay_knee",
+            position: rawKnee,
+            timestamp: ts,
+            maxSpeed: legMaxSpeed2D
+        )
+
+        return .extendedLine(from: ankle, through: knee, color: .cyan, width: 2)
+    }
+
+    func backInstruction(
+        landmarks: PoseResult,
+        side: BodySide,
+        exerciseType: ExerciseType?
+    ) -> OverlayInstruction? {
+        let ts = landmarks.timestamp
+        if CustomOverlayBuilder.usesFrontalBackAlignment(exerciseType: exerciseType) {
+            guard let leftHip = landmarks.position(for: .hip(.left)),
+                  let rightHip = landmarks.position(for: .hip(.right)),
+                  let leftShoulder = landmarks.position(for: .shoulder(.left)),
+                  let rightShoulder = landmarks.position(for: .shoulder(.right)) else {
+                return nil
+            }
+            let hip = (
+                smoother.smooth(key: "overlay_front_hip_l", position: leftHip, timestamp: ts, maxSpeed: legMaxSpeed2D)
+                + smoother.smooth(key: "overlay_front_hip_r", position: rightHip, timestamp: ts, maxSpeed: legMaxSpeed2D)
+            ) / 2
+            let shoulder = (
+                smoother.smooth(key: "overlay_front_shoulder_l", position: leftShoulder, timestamp: ts, maxSpeed: legMaxSpeed2D)
+                + smoother.smooth(key: "overlay_front_shoulder_r", position: rightShoulder, timestamp: ts, maxSpeed: legMaxSpeed2D)
+            ) / 2
+            return .extendedLine(from: hip, through: shoulder, color: .cyan, width: 2)
+        }
+
+        guard let rawHip = landmarks.position(for: .hip(side)),
+              let rawShoulder = landmarks.position(for: .shoulder(side)) else {
+            return nil
+        }
+        let hip = smoother.smooth(
+            key: "\(side)_overlay_back_hip",
+            position: rawHip,
+            timestamp: ts,
+            maxSpeed: legMaxSpeed2D
+        )
+        let shoulder = smoother.smooth(
+            key: "\(side)_overlay_back_shoulder",
+            position: rawShoulder,
+            timestamp: ts,
+            maxSpeed: legMaxSpeed2D
+        )
+        return .extendedLine(from: hip, through: shoulder, color: .cyan, width: 2)
+    }
+
+    private func smoothedTorsoDirection(
+        landmarks: PoseResult,
+        side: BodySide,
+        timestamp: Double
+    ) -> SIMD2<Float> {
+        guard let rawHip = landmarks.position(for: .hip(side)),
+              let rawShoulder = landmarks.position(for: .shoulder(side)) else {
+            return SIMD2(0, -1)
+        }
+        let hip = smoother.smooth(
+            key: "\(side)_overlay_torso_hip",
+            position: rawHip,
+            timestamp: timestamp,
+            maxSpeed: legMaxSpeed2D
+        )
+        let shoulder = smoother.smooth(
+            key: "\(side)_overlay_torso_shoulder",
+            position: rawShoulder,
+            timestamp: timestamp,
+            maxSpeed: legMaxSpeed2D
+        )
+        let vertical = shoulder - hip
+        guard simd_length_squared(vertical) > 1e-6 else {
+            return SIMD2(0, -1)
+        }
+        return simd_normalize(vertical)
     }
 }
 
@@ -144,13 +289,12 @@ private struct CenterFootTracker {
     private var lockedDirection: SIMD2<Float>?
     private var relocateFrames = 0
 
-    mutating func line(landmarks: PoseResult, side: BodySide) -> (from: SIMD2<Float>, through: SIMD2<Float>)? {
-        guard let point = CustomOverlayBuilder.centerFootPosition(landmarks: landmarks, side: side) else {
-            return lockedLine()
-        }
+    func lockedInstruction() -> OverlayInstruction? {
+        guard let line = lockedLine() else { return nil }
+        return .extendedLine(from: line.from, through: line.through, color: .magenta, width: 2)
+    }
 
-        let direction = CustomOverlayBuilder.roomVerticalDirection(landmarks: landmarks, side: side)
-
+    mutating func update(point: SIMD2<Float>, direction: SIMD2<Float>) -> (from: SIMD2<Float>, through: SIMD2<Float>)? {
         if let lockedPoint, let lockedDirection {
             if simd_distance(point, lockedPoint) > relocateRadius {
                 relocateFrames += 1
