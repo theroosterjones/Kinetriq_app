@@ -81,6 +81,15 @@ form,lifting,squat,deadlift,workout,gym,rep counter,tempo,pose,posture,mobility,
 
 ## 5. What's New (version notes)
 
+### 3.5.3
+
+> Form score now grades depth consistency in finer bands, no longer penalizes a
+> concentric that slows as the set gets hard, and deducts for eccentrics of 1
+> second or faster. Coaching notes call out a challenging set versus reps that
+> lack control.
+
+### First public release
+
 > First public release of Kinetriq. On-device exercise form analysis, movement
 > assessments, per-rep breakdowns, coaching insights, shareable summaries, and
 > Kinetriq Pro.

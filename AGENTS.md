@@ -154,7 +154,12 @@ Saved-video and live exercise analysis support user-selected custom alignment ov
 - [ ] Additional exercises
 - [ ] Export analysis summary
 
-Last updated: **Kinetriq 3.5.2** build **43** (feature/bugfix release). Changes vs 3.5.1/42:
+Last updated: **Kinetriq 3.5.3** build **45** (feature/bugfix release). Changes vs 3.5.2/43:
+1. **Banded ROM consistency scoring** — peak-angle SD maps to discrete ROM scores: 0–1.5° → 100, 2–3° → 90, 4–5° → 80, 6–7° → 70, 8–10° → 50, 11–12° → 40, 12–13° → 30, 14–15° → 20, above 15° → 0.
+2. **Fatigue is not a score penalty** — concentric duration is excluded from tempo consistency so a set that slows on the way up no longer loses points. Coaching still notes concentric slowing as fatigue and a challenging set.
+3. **Fast-eccentric control caveat** — reps with an eccentric of 1.0 s or faster subtract up to 25 points (scaled by how many reps are rushed) and get a readout that the reps lack control.
+
+History: **3.5.2** build **43** (feature/bugfix). Changes vs 3.5.1/42:
 1. **Returning-subscriber paywall** — `PurchaseService.recoverEntitlementsIfNeeded()` runs when the gate paywall appears: a `customerInfo` refresh and, if still locked out, a one-time silent `restorePurchases()` that transfers an existing Apple-ID subscription onto the current app user ID so subscribers stop seeing the paywall on re-login. (Root cause of a persistent paywall is usually the RevenueCat dashboard "transfer purchases" behavior when a sub was bought under an anonymous/other app user ID — verify that setting too.)
 2. **In-app plan management** — `PaywallView` gained an `isManagement` mode (dismissable, with close button; the mandatory gate still has none per 2.1(a)). Settings adds "Change or Upgrade Plan"/"View Plans" presenting it as a sheet, plus a footer explaining monthly↔yearly switching, Apple management, and Restore.
 3. **Knee drift in deep flexion** — `LandmarkSmoother.smooth`/`smooth3D` gained an optional `maxSpeed` velocity limiter (spike rejection) applied to the squat hip/knee/ankle chain (2D `2.5` units/s, 3D `4.0` m/s) so single-frame MediaPipe snaps don't yank the landmark while real motion still tracks.

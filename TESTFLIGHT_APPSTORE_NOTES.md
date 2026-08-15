@@ -2,6 +2,14 @@
 
 This document tracks project changes made to get KevLines successfully uploadable to TestFlight and aligned with App Store Connect requirements.
 
+## 2026-08-15 — Kinetriq 3.5.3 (45)
+
+### TestFlight / App Store Connect
+- Marketing version `3.5.3`, build `45`. Build `44` was already used by the 2026-08-14 upload of 3.5.2, so this release increments past it.
+- Form-score refinements: banded ROM consistency, concentric fatigue excluded from the numeric score, fast-eccentric control penalty, and matching coaching notes.
+- What's New copy is in `docs/AppStoreListing.md` (section 5).
+- Archive as **Any iOS Device (arm64)**, then Organizer → Distribute App → App Store Connect. MediaPipe `Upload Symbols Failed` warnings are expected and non-blocking.
+
 ## 2026-06-09 — Kinetriq 3.4.3 (31)
 
 ### TestFlight build notes

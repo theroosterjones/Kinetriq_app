@@ -29,10 +29,18 @@ enum CoachingInsights {
 
         // 1. Score headline (only meaningful with ≥3 reps).
         if let score = summary.finalScore {
-            if score >= 80 {
+            if score >= 90 {
+                insights.append(CoachingInsight(
+                    tone: .positive, icon: "checkmark.seal.fill",
+                    text: "Excellent consistency — score \(score)/100."))
+            } else if score >= 80 {
                 insights.append(CoachingInsight(
                     tone: .positive, icon: "checkmark.seal.fill",
                     text: "Strong, repeatable form — consistency score \(score)/100."))
+            } else if score >= 70 {
+                insights.append(CoachingInsight(
+                    tone: .info, icon: "chart.bar.fill",
+                    text: "Solid consistency at \(score)/100. A bit more repeatable depth and tempo will push this higher."))
             } else if score >= 60 {
                 insights.append(CoachingInsight(
                     tone: .info, icon: "chart.bar.fill",
@@ -48,17 +56,27 @@ enum CoachingInsights {
                 text: "Counted \(summary.totalReps) rep\(summary.totalReps == 1 ? "" : "s"). Record at least 3 clean reps to unlock a consistency score."))
         }
 
-        // 2. Tempo drift across the set.
+        // 2. Fast eccentrics — lack of control (also lowers the numeric score).
+        if let control = fastEccentricInsight(reps: summary.perRepMetrics) {
+            insights.append(control)
+        }
+
+        // 3. Concentric slowing from fatigue — informational, not a score penalty.
+        if let fatigue = concentricFatigueInsight(reps: summary.perRepMetrics) {
+            insights.append(fatigue)
+        }
+
+        // 4. Tempo drift across the set (rushing only; slowing is handled above).
         if let drift = tempoDrift(reps: summary.perRepMetrics) {
             insights.append(drift)
         }
 
-        // 3. Depth / ROM consistency.
+        // 5. Depth / ROM consistency.
         if let rom = romConsistency(reps: summary.perRepMetrics) {
             insights.append(rom)
         }
 
-        // 4. Tracking quality caveat.
+        // 6. Tracking quality caveat.
         if let tracking = trackingInsight(rate: summary.poseDetectionRate) {
             insights.append(tracking)
         }
@@ -123,8 +141,40 @@ enum CoachingInsights {
         Array(insights.prefix(4))
     }
 
-    /// Detects whether the lifting pace drifted between the first and second half
-    /// of the set (a common fatigue / rushing tell).
+    /// Flags a set where the lowering phase is 1 second or faster.
+    private static func fastEccentricInsight(reps: [RepMetric]) -> CoachingInsight? {
+        guard !reps.isEmpty else { return nil }
+        let fastCount = reps.filter(\.lacksEccentricControl).count
+        let meanEcc = reps.map(\.eccentricDuration).reduce(0, +) / Double(reps.count)
+        let majorityFast = Double(fastCount) / Double(reps.count) >= 0.5
+        guard majorityFast || meanEcc <= RepMetric.fastEccentricThreshold else { return nil }
+
+        return CoachingInsight(
+            tone: .caution, icon: "hare.fill",
+            text: "Eccentric is 1 second or faster — these reps lack control. Slow the lowering phase and own the weight on the way down.")
+    }
+
+    /// Concentric that lengthens in the second half of the set is fatigue, not a fault.
+    private static func concentricFatigueInsight(reps: [RepMetric]) -> CoachingInsight? {
+        guard reps.count >= 3 else { return nil }
+
+        let mid = reps.count / 2
+        let firstHalf = Array(reps.prefix(mid))
+        let secondHalf = Array(reps.suffix(reps.count - mid))
+        let early = averageConcentric(firstHalf)
+        let late = averageConcentric(secondHalf)
+        guard early > 0.2 else { return nil }
+
+        let change = (late - early) / early
+        guard change >= 0.25 else { return nil }
+
+        return CoachingInsight(
+            tone: .info, icon: "tortoise.fill",
+            text: "Concentric slowed \(Int(change * 100))% toward the end of the set — that's fatigue, and it means this was a challenging set.")
+    }
+
+    /// Detects whether the lifting pace sped up between the first and second half
+    /// of the set. Slowing is reported separately as fatigue, not a fault.
     private static func tempoDrift(reps: [RepMetric]) -> CoachingInsight? {
         guard reps.count >= 4 else { return nil }
 
@@ -147,14 +197,22 @@ enum CoachingInsights {
             return CoachingInsight(
                 tone: .caution, icon: "hare.fill",
                 text: "Your reps sped up \(Int(abs(change) * 100))% by the end of the set — keep the tempo controlled as you fatigue.")
-        } else if change >= 0.25 {
-            return CoachingInsight(
-                tone: .info, icon: "tortoise.fill",
-                text: "Your reps slowed \(Int(change * 100))% toward the end — likely fatigue. Stop a rep before form breaks down.")
+        }
+        if change >= 0.25 {
+            // Concentric-only fatigue is already covered; skip the old "stop a rep" copy.
+            return nil
+        }
+        if reps.contains(where: \.lacksEccentricControl) {
+            return nil
         }
         return CoachingInsight(
             tone: .positive, icon: "metronome.fill",
             text: "Tempo stayed steady across the whole set — great control.")
+    }
+
+    private static func averageConcentric(_ slice: [RepMetric]) -> Double {
+        guard !slice.isEmpty else { return 0 }
+        return slice.reduce(0.0) { $0 + $1.concentricDuration } / Double(slice.count)
     }
 
     /// Reports how consistent peak depth/range was across reps.
