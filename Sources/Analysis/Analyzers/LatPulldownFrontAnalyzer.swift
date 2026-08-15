@@ -4,9 +4,9 @@ import simd
 /// Bilateral lat pulldown / chin-up analyzer filmed from the front or back.
 ///
 /// Tracks both elbow angles (shoulder→elbow→wrist) and both shoulder angles
-/// (hip→shoulder→elbow) independently. Rep counting is driven by the average
-/// elbow angle. Spine midline and bilateral hip markers are always drawn so
-/// posture and torso position are visible throughout the set.
+/// (hip→shoulder→elbow) independently. Rep counting prefers the average elbow
+/// angle when wrists are visible, then falls back to average shoulder angle when
+/// grip width/bar position occludes wrists in front/back view.
 ///
 /// Film from directly in front of or behind the cable stack / pull-up bar.
 /// Keep both arms and both hips visible in frame throughout the rep.
@@ -26,7 +26,8 @@ final class LatPulldownFrontAnalyzer: ExerciseAnalyzer {
     }
 
     private let smoother     = LandmarkSmoother()
-    // invertPhases: true — pulling bar down closes the elbows (angle ↓) = concentric.
+    private let minimumRepSignalVisibility: Float = 0.45
+    // invertPhases: true — pulling down closes the active rep signal (angle ↓) = concentric.
     private let repCounter   = RepCounter(extendedThreshold: 150, flexedThreshold: 80)
     private let tempoTracker = TempoTracker(invertPhases: true)
 
@@ -107,7 +108,28 @@ final class LatPulldownFrontAnalyzer: ExerciseAnalyzer {
 
         let avgShoulderAngle = (lShoulderAngle + rShoulderAngle) / 2.0
 
-        repCounter.update(angle: avgElbowAngle, timestamp: ts)
+        let elbowSignalVisibility = min(
+            landmarks.visibility(for: .shoulder(.left)),
+            landmarks.visibility(for: .shoulder(.right)),
+            landmarks.visibility(for: .elbow(.left)),
+            landmarks.visibility(for: .elbow(.right)),
+            landmarks.visibility(for: .wrist(.left)),
+            landmarks.visibility(for: .wrist(.right))
+        )
+        let shoulderSignalVisibility = min(
+            landmarks.visibility(for: .hip(.left)),
+            landmarks.visibility(for: .hip(.right)),
+            landmarks.visibility(for: .shoulder(.left)),
+            landmarks.visibility(for: .shoulder(.right)),
+            landmarks.visibility(for: .elbow(.left)),
+            landmarks.visibility(for: .elbow(.right))
+        )
+
+        let useElbowSignal = elbowSignalVisibility >= minimumRepSignalVisibility && avgElbowAngle.isFinite
+        let useShoulderFallback = shoulderSignalVisibility >= minimumRepSignalVisibility && avgShoulderAngle.isFinite
+        let repSignal = useElbowSignal || !useShoulderFallback ? avgElbowAngle : avgShoulderAngle
+
+        repCounter.update(angle: repSignal, timestamp: ts)
 
         let shoulderMid = (lShoulder + rShoulder) / 2.0
         let hipMid      = (lHip + rHip) / 2.0
@@ -130,10 +152,6 @@ final class LatPulldownFrontAnalyzer: ExerciseAnalyzer {
         // Right arm
         instructions.append(.line(from: rShoulder, to: rElbow, color: .yellow, width: 3))
         instructions.append(.line(from: rElbow,    to: rWrist, color: .yellow, width: 3))
-
-        // Extended forearm lines toward the bar
-        instructions.append(.extendedLine(from: lWrist, through: lElbow, color: .cyan, width: 2))
-        instructions.append(.extendedLine(from: rWrist, through: rElbow, color: .cyan, width: 2))
 
         // Joint circles
         instructions.append(.circle(at: lShoulder, radius: 10, color: .red,    filled: true))
@@ -176,7 +194,7 @@ final class LatPulldownFrontAnalyzer: ExerciseAnalyzer {
             ],
             repCount: repCounter.count,
             repState: repCounter.state,
-            tempoPhase: tempoTracker.update(angle: avgElbowAngle, timestamp: ts),
+            tempoPhase: tempoTracker.update(angle: repSignal, timestamp: ts),
             overlayInstructions: instructions
         )
     }

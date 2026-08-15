@@ -10,6 +10,9 @@ packages:
   SwiftTasksVision:
     url: https://github.com/paescebu/SwiftTasksVision.git
     from: "0.10.14"
+  RevenueCat:
+    url: https://github.com/RevenueCat/purchases-ios-spm.git
+    from: "5.78.0"
 
 targets:
   Kinetriq:
@@ -17,6 +20,14 @@ targets:
     platform: iOS
     sources:
       - path: Sources
+    configFiles:
+      Debug: Config/KinetriqSecrets.xcconfig
+      Release: Config/KinetriqSecrets.xcconfig
+    entitlements:
+      path: Kinetriq.entitlements
+      properties:
+        com.apple.developer.applesignin:
+          - Default
     preBuildScripts:
       - name: Patch MediaPipe framework plist for App Store validation
         shell: /bin/sh
@@ -26,8 +37,8 @@ targets:
           SIM_PLIST="${DERIVED_DATA_ROOT}/SourcePackages/checkouts/SwiftTasksVision/Dependencies/MediaPipeTasksVision.xcframework/ios-arm64_x86_64-simulator/MediaPipeTasksVision.framework/Info.plist"
           
           MIN_OS="${IPHONEOS_DEPLOYMENT_TARGET:-17.0}"
-          VERSION="${MARKETING_VERSION:-3.4.2}"
-          BUILD="${CURRENT_PROJECT_VERSION:-22}"
+          VERSION="${MARKETING_VERSION:-3.5.2}"
+          BUILD="${CURRENT_PROJECT_VERSION:-43}"
 
           set_or_add() {
             local key="$1" val="$2" plist="$3"
@@ -65,8 +76,8 @@ targets:
           # Use build-setting variables with hardcoded fallbacks in case they are not
           # exported into the script environment during Archive / Distribution builds.
           MIN_OS="${IPHONEOS_DEPLOYMENT_TARGET:-17.0}"
-          VERSION="${MARKETING_VERSION:-3.4.2}"
-          BUILD="${CURRENT_PROJECT_VERSION:-22}"
+          VERSION="${MARKETING_VERSION:-3.5.2}"
+          BUILD="${CURRENT_PROJECT_VERSION:-43}"
 
           set_or_add() {
             local key="$1" val="$2" plist="$3"
@@ -85,16 +96,25 @@ targets:
           echo "Patched $EMBEDDED_PLIST — MinOS=$MIN_OS version=$VERSION build=$BUILD"
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.kevinjones.KevLines2-0
+        # Launch identity: migrated off the KevLines testing bundle ID to the new
+        # Kinetriq App ID / App Store Connect record. The 3.5.x version lineage is
+        # carried forward onto the new record (build numbering continues past the
+        # last KevLines build, 34).
+        PRODUCT_BUNDLE_IDENTIFIER: com.kevinjones.Kinetriq
         PRODUCT_NAME: Kinetriq
         PRODUCT_MODULE_NAME: Kinetriq
         TARGETED_DEVICE_FAMILY: "1"
-        MARKETING_VERSION: "3.4.2"
-        CURRENT_PROJECT_VERSION: "22"
+        MARKETING_VERSION: "3.5.2"
+        CURRENT_PROJECT_VERSION: "43"
         SWIFT_VERSION: "5.9"
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         INFOPLIST_KEY_CFBundleDisplayName: "Kinetriq"
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "Kinetriq needs access to your photo library to select exercise videos for analysis."
         INFOPLIST_KEY_NSCameraUsageDescription: "Kinetriq uses your camera for real-time exercise form analysis with skeleton overlay."
+        # Custom config keys (RevenueCat/Supabase/legal URLs) live in this file —
+        # INFOPLIST_KEY_* only injects Apple-known keys, not custom ones. Standard
+        # keys are still produced by GENERATE_INFOPLIST_FILE and merged in.
+        INFOPLIST_FILE: Kinetriq-Info.plist
         INFOPLIST_KEY_UILaunchScreen_Generation: true
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
@@ -103,6 +123,10 @@ targets:
     dependencies:
       - package: SwiftTasksVision
         product: SwiftTasksVision
+      - package: RevenueCat
+        product: RevenueCat
+      - package: RevenueCat
+        product: RevenueCatUI
 
   KinetriqTests:
     type: bundle.unit-test
@@ -111,7 +135,7 @@ targets:
       - Tests
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.kevinjones.KevLines2-0Tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.kevinjones.KinetriqTests
         SWIFT_VERSION: "5.9"
         GENERATE_INFOPLIST_FILE: true
     dependencies:

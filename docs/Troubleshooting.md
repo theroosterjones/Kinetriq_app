@@ -4,7 +4,7 @@ Companion to [VideoOrientation.md](VideoOrientation.md) (decode/export) and [AGE
 
 ## Reading analysis logs (no performance impact)
 
-Saved-video analysis uses unified logging only (`os.Logger`, subsystem **`com.kevinjones.KevLines2-0`** — **no disk writes** on the hot path). In **Console.app** or Xcode's debug console, filter by subsystem or category:
+Saved-video analysis uses unified logging only (`os.Logger`, subsystem **`com.kevinjones.Kinetriq`** — **no disk writes** on the hot path). In **Console.app** or Xcode's debug console, filter by subsystem or category:
 
 | Category | Typical messages |
 |----------|------------------|

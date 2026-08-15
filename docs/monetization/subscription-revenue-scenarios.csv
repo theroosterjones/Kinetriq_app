@@ -1,0 +1,8 @@
+Scenario,Option,Price annual USD,Effective monthly before Apple cut,Apple cut approx,Net per subscriber per month USD,MAU,Conversion rate percent,Paying subscribers,Estimated net revenue USD per month
+Sub conservative,Option B,59.99,5.00,30%,3.50,1000,3,30,105
+Sub conservative,Option B,59.99,5.00,30%,3.50,5000,4,200,700
+Sub moderate,Option B,59.99,5.00,30%,3.50,10000,5,500,1750
+Sub moderate,Option C,79.99,6.67,30%,4.67,10000,4,400,1868
+Sub scale,Option B,59.99,5.00,30%,3.50,50000,5,2500,8750
+Sub scale,Option C,79.99,6.67,30%,4.67,50000,5,2500,11675
+Sub early wedge,Option A,34.99,2.92,30%,2.04,1000,5,50,102

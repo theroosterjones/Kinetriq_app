@@ -2,6 +2,13 @@
 
 This document tracks project changes made to get KevLines successfully uploadable to TestFlight and aligned with App Store Connect requirements.
 
+## 2026-06-09 — Kinetriq 3.4.3 (31)
+
+### TestFlight build notes
+- Bumped marketing version to `3.4.3` and build number to `31` for a new TestFlight upload.
+- `3.4.2` build `26` was working well before this broader UX/exercise pass and should be treated as the known-good fallback if testers report regressions.
+- Added Dips, renamed Barbell Row to Row, added full-screen analyzed-video playback, centered Home FAQ text, changed tempo rounding to the 0.6-second threshold, and added default-off custom exercise overlays for saved video and live analysis.
+
 ## 2026-03-31
 
 ### Privacy and metadata

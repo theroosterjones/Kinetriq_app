@@ -17,6 +17,11 @@ final class LungeAnalyzer: ExerciseAnalyzer {
     private let repCounter   = RepCounter(extendedThreshold: 155, flexedThreshold: 100)
     private let tempoTracker = TempoTracker()
 
+    /// Spike-rejection velocity limits for the leg chain (see `SquatAnalyzer`).
+    /// 2D is normalized [0,1] screen space; 3D is metric meters.
+    private let legMaxSpeed2D: Float = 2.5
+    private let legMaxSpeed3D: Float = 4.0
+
     init(side: BodySide) {
         self.side = side
     }
@@ -30,16 +35,16 @@ final class LungeAnalyzer: ExerciseAnalyzer {
         }
 
         let ts       = landmarks.timestamp
-        let hip      = smoother.smooth(key: "\(side)_hip",      position: rawHip,      timestamp: ts)
-        let knee     = smoother.smooth(key: "\(side)_knee",     position: rawKnee,     timestamp: ts)
-        let ankle    = smoother.smooth(key: "\(side)_ankle",    position: rawAnkle,    timestamp: ts)
+        let hip      = smoother.smooth(key: "\(side)_hip",      position: rawHip,      timestamp: ts, maxSpeed: legMaxSpeed2D)
+        let knee     = smoother.smooth(key: "\(side)_knee",     position: rawKnee,     timestamp: ts, maxSpeed: legMaxSpeed2D)
+        let ankle    = smoother.stabilizeAnchor(key: "\(side)_lunge_ankle_anchor", position: rawAnkle)
         let shoulder = smoother.smooth(key: "\(side)_shoulder", position: rawShoulder, timestamp: ts)
         let ear      = landmarks.position(for: .ear(side))
             .map { smoother.smooth(key: "\(side)_ear", position: $0, timestamp: ts) }
 
-        let w_hip      = landmarks.worldPosition(for: .hip(side))     .map { smoother.smooth3D(key: "\(side)_hip",      position: $0, timestamp: ts) }
-        let w_knee     = landmarks.worldPosition(for: .knee(side))    .map { smoother.smooth3D(key: "\(side)_knee",     position: $0, timestamp: ts) }
-        let w_ankle    = landmarks.worldPosition(for: .ankle(side))   .map { smoother.smooth3D(key: "\(side)_ankle",    position: $0, timestamp: ts) }
+        let w_hip      = landmarks.worldPosition(for: .hip(side))     .map { smoother.smooth3D(key: "\(side)_hip",      position: $0, timestamp: ts, maxSpeed: legMaxSpeed3D) }
+        let w_knee     = landmarks.worldPosition(for: .knee(side))    .map { smoother.smooth3D(key: "\(side)_knee",     position: $0, timestamp: ts, maxSpeed: legMaxSpeed3D) }
+        let w_ankle    = landmarks.worldPosition(for: .ankle(side))   .map { smoother.stabilizeAnchor3D(key: "\(side)_lunge_ankle_anchor", position: $0) }
         let w_shoulder = landmarks.worldPosition(for: .shoulder(side)).map { smoother.smooth3D(key: "\(side)_shoulder", position: $0, timestamp: ts) }
 
         let kneeAngle: Float
@@ -71,16 +76,14 @@ final class LungeAnalyzer: ExerciseAnalyzer {
         instructions.append(contentsOf: SpineOverlay.instructions(
             ear: ear, shoulder: shoulder, hip: hip))
 
-        // Lower-leg reference line (ankle → knee extended, shows shin angle)
-        instructions.append(.extendedLine(from: ankle, through: knee, color: .cyan, width: 2))
-
         // Torso and leg skeleton
         instructions.append(.line(from: shoulder, to: hip,   color: .green,  width: 3))
         instructions.append(.line(from: hip,      to: knee,  color: .green,  width: 3))
         instructions.append(.line(from: knee,     to: ankle, color: .green,  width: 3))
 
-        // Key joints
-        instructions.append(.circle(at: knee,     radius: 12, color: .red,    filled: true))
+        // Key joints — knee marker on the patella tip (side view) for steadier tracking.
+        let kneeTip = JointTip.position(vertex: knee, toward: hip, and: ankle)
+        instructions.append(.circle(at: kneeTip,  radius: 12, color: .red,    filled: true))
         instructions.append(.circle(at: hip,      radius: 10, color: .yellow, filled: true))
         instructions.append(.circle(at: shoulder, radius: 10, color: .yellow, filled: true))
         instructions.append(.circle(at: ankle,    radius: 8,  color: .orange, filled: true))

@@ -1,0 +1,9 @@
+Line item,MAU,Value,Calculation,Amount USD per month
+Free users,10000,9500,95% of MAU remain free,
+Paying subscribers,10000,500,5% conversion Option B,
+Ad impressions free users,9500,15 per user,9500 x 15,142500 impressions
+Ad revenue,142500,5 eCPM blended,142500/1000 x 5,713
+Subscription net,500,3.50 net per sub after Apple,500 x 3.50,1750
+Total hybrid revenue,,,713 + 1750,2463
+Compare subs only same MAU,,,500 subs x 3.50,1750
+Compare ads only same MAU,,,10000 x 15 imp x 5 eCPM / 1000,750

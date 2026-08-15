@@ -1,0 +1,21 @@
+App,Pricing model,Free tier summary,Paid tier name,Monthly USD,Annual USD,Other IAP,Free trial,Notes
+Flex AI,Freemium subscription,Core logging plans free,Premium,12.99,83.99,,,App Store US listing
+Flex AI,Freemium subscription,,Premium Plus,19.99,119.99,,,
+Flex AI,Freemium subscription,,Premium Plus Family,49.99,299.99,,,Per month and year SKUs on US store
+Lift App,Freemium subscription required after trial,7-day trial then sub,Standard,9.99,99.99,,7 days,100 video uploads/mo bar tracking
+Lift App,Freemium subscription,,Pro,19.99,199.99,,7 days,200 uploads/mo + pose form analysis
+Gymaholic,Freemium subscription,Limited free use,Premium,6.99,62.99,,7 days,AI form check included; ~5.25/mo effective yearly
+Gymaholic,Freemium subscription,,Premium Plus,9.99,77.99,,7 days,Adds nutrition photo tracking macros
+SportsReflector,Freemium subscription,Basic analysis limited,Pro (website),19.99,,,,"Website lists $19.99/mo; App Store may differ"
+SportsReflector,Freemium subscription,,Pro (App Store US),24.99,119.99,4.99 weekly,,Verify at purchase
+SportsReflector,Freemium subscription,,Coach,49.99-69.99,,,,"Team tools; $49.99/mo on site $69.99 on some stores"
+Form Factor,Free no monetization,Full app free,None,0,0,,,No ads no subscriptions per listing
+FormLab,Freemium one-time IAP,Real-time squat with limits,FormLab Pro one-time,,,3.99,,Unlimited reps history recording
+Squat Checker,Freemium subscription,10 reps per workout real-time squat,Premium,2.99,19.99,1.99 intro monthly,,Squat only
+FormCoach,Freemium subscription,Squat push-up 3 sets/day,Pro,9.99,59.99,,7 days,5 exercises on Pro
+MotionFit,Freemium IAP,Free download,Motion Fit Premium,0.99-6.99,,,,"SKU names vary; verify store"
+FormCheck AI,Freemium subscription/IAP,Limited without pro,Monthly,,,9.99/mo,,Multiple yearly SKUs 19.99-29.99
+FormCheck AI,Freemium,,Pro packs,,,3.99-14.99,,One-off tiers on store
+SquatEye,Freemium subscription,1-week trial,Pro,4.99,29.99,,7 days,Depth analysis not full coaching
+Deadlift AI,Freemium subscription,Sub required for full access,Weekly/monthly/annual,9.99,39.99,4.99/week,,
+Form Fix,Freemium subscription,,Full access,12.99,,4.99/week,,

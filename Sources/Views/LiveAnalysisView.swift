@@ -6,21 +6,39 @@ import os.log
 
 private let logger = Logger(subsystem: "com.kevinjones.Kinetriq", category: "LiveAnalysisView")
 
+// MARK: - Live Frame State
+
+/// High-frequency per-frame state (updates ~30–60×/second) kept on a *separate*
+/// observable object so that only the small overlay/HUD leaf views re-render each
+/// frame. If these lived on `LiveAnalysisViewModel`, the whole `LiveAnalysisView`
+/// body — including the exercise `Menu` — would be invalidated every frame, which
+/// makes menus and buttons unresponsive because the press gesture is cancelled by
+/// the constant view rebuilds.
+final class LiveFrameState: ObservableObject {
+    @Published var currentInstructions: [OverlayInstruction] = []
+    @Published var repCount: Int = 0
+    @Published var currentPhase: TempoPhase?
+    @Published var trackingWarningVisible = false
+    @Published var currentScore: Int?
+}
+
 // MARK: - Live Analysis ViewModel
 
 /// Owns the camera service, pose landmarker, and analyzer for the live pipeline.
 /// Heavy processing runs on the camera's serial capture queue; UI state is dispatched to main.
+///
+/// Only *low-frequency* control state lives here as `@Published`. Per-frame data
+/// lives on `frameState` (a plain `let`, not `@Published`) so updating it does not
+/// invalidate views that observe the view model.
 final class LiveAnalysisViewModel: ObservableObject {
 
-    @Published private(set) var currentInstructions: [OverlayInstruction] = []
-    @Published private(set) var repCount: Int = 0
-    @Published private(set) var currentPhase: TempoPhase?
+    let frameState = LiveFrameState()
+
     @Published private(set) var isRecording = false
     @Published private(set) var isAuthorized = false
-    @Published private(set) var trackingWarningVisible = false
     @Published private(set) var cameraPosition: AVCaptureDevice.Position = .back
     @Published var overlayMode: OverlayMode = .simple
-    @Published private(set) var currentScore: Int?
+    @Published var customOverlayOptions: Set<CustomOverlayOption> = []
 
     let metalRenderer = MetalCameraRenderer()
 
@@ -28,6 +46,7 @@ final class LiveAnalysisViewModel: ObservableObject {
     private let poseLandmarker = PoseLandmarkerService()
     private let overlayRenderer = OverlayRenderer()
     private let metricsCollector = RepMetricsCollector()
+    private let customOverlayState = CustomOverlayState()
 
     private var _analyzer: FrameAnalyzerProtocol?
     private var _recorder: LiveVideoRecorder?
@@ -46,10 +65,11 @@ final class LiveAnalysisViewModel: ObservableObject {
         _analyzer?.reset()
         _analyzer = analyzer
         metricsCollector.reset()
+        customOverlayState.reset()
         lowTrackingStreak = 0
         DispatchQueue.main.async {
-            self.trackingWarningVisible = false
-            self.currentScore = nil
+            self.frameState.trackingWarningVisible = false
+            self.frameState.currentScore = nil
         }
     }
 
@@ -124,8 +144,17 @@ final class LiveAnalysisViewModel: ObservableObject {
             timestamp: timeSec
         )
 
-        // Build final instructions: base overlay + optional HUD
+        // Build final instructions: base overlay + user-selected alignment lines + optional HUD
         var finalInstructions = frameAnalysis.overlayInstructions
+        if let poseResult, let exerciseAnalyzer = _analyzer as? ExerciseAnalyzer {
+            finalInstructions.append(contentsOf: CustomOverlayBuilder.instructions(
+                options: customOverlayOptions,
+                landmarks: poseResult,
+                side: exerciseAnalyzer.side,
+                exerciseType: exerciseAnalyzer.exerciseType,
+                state: customOverlayState
+            ))
+        }
         let mode = overlayMode
         if mode == .fullHUD {
             finalInstructions.append(contentsOf:
@@ -157,11 +186,12 @@ final class LiveAnalysisViewModel: ObservableObject {
         let shouldShowTrackingWarning = lowTrackingStreak >= 20
 
         DispatchQueue.main.async { [weak self] in
-            self?.currentInstructions = finalInstructions
-            self?.repCount = reps
-            self?.currentPhase = phase
-            self?.trackingWarningVisible = shouldShowTrackingWarning
-            self?.currentScore = score
+            guard let self else { return }
+            self.frameState.currentInstructions = finalInstructions
+            self.frameState.repCount = reps
+            self.frameState.currentPhase = phase
+            self.frameState.trackingWarningVisible = shouldShowTrackingWarning
+            self.frameState.currentScore = score
         }
     }
 
@@ -237,18 +267,17 @@ struct OverlayCanvas: View {
             context.stroke(path, with: .color(color.swiftUIColor), lineWidth: CGFloat(width))
 
         case let .extendedLine(from, through, color, width):
-            // Extend from 'from' through 'through' to frame boundary
-            let p1 = point(from, size)
-            let p2 = point(through, size)
-            let dx = p2.x - p1.x
-            let dy = p2.y - p1.y
-            let len = sqrt(dx * dx + dy * dy)
-            guard len > 0.5 else { break }
-            let scale = max(size.width, size.height) * 2
-            let end = CGPoint(x: p2.x + dx / len * scale, y: p2.y + dy / len * scale)
+            let fromPx = SIMD2<Float>(Float(from.x * Float(size.width)), Float(from.y * Float(size.height)))
+            let throughPx = SIMD2<Float>(Float(through.x * Float(size.width)), Float(through.y * Float(size.height)))
+            let (start, end) = AngleCalculator.extendLineToFrame(
+                p1: fromPx,
+                p2: throughPx,
+                width: Float(size.width),
+                height: Float(size.height)
+            )
             var path = Path()
-            path.move(to: p2)
-            path.addLine(to: end)
+            path.move(to: CGPoint(x: CGFloat(start.x), y: CGFloat(start.y)))
+            path.addLine(to: CGPoint(x: CGFloat(end.x), y: CGFloat(end.y)))
             context.stroke(path, with: .color(color.swiftUIColor), lineWidth: CGFloat(width))
 
         case let .circle(at, radius, color, filled):
@@ -277,6 +306,60 @@ struct OverlayCanvas: View {
     private func point(_ normalized: SIMD2<Float>, _ size: CGSize) -> CGPoint {
         CGPoint(x: CGFloat(normalized.x) * size.width,
                 y: CGFloat(normalized.y) * size.height)
+    }
+}
+
+// MARK: - Per-frame leaf views
+//
+// These observe `LiveFrameState` (the high-frequency object) so only they redraw
+// each frame. Keeping them separate from `LiveAnalysisView` is what allows the
+// exercise dropdown, segmented pickers, and record button to stay responsive.
+
+private struct LiveOverlayCanvas: View {
+    @ObservedObject var frameState: LiveFrameState
+
+    var body: some View {
+        OverlayCanvas(instructions: frameState.currentInstructions)
+            .ignoresSafeArea()
+    }
+}
+
+private struct LiveRepCountLabel: View {
+    @ObservedObject var frameState: LiveFrameState
+
+    var body: some View {
+        Text("\(frameState.repCount)")
+            .font(.system(size: 44, weight: .bold, design: .rounded))
+            .foregroundStyle(.white)
+    }
+}
+
+private struct LivePhaseLabel: View {
+    @ObservedObject var frameState: LiveFrameState
+
+    var body: some View {
+        Text(frameState.currentPhase?.rawValue.capitalized ?? "—")
+            .font(.caption.weight(.medium))
+            .foregroundStyle(.cyan)
+            .multilineTextAlignment(.trailing)
+    }
+}
+
+private struct LiveTrackingWarning: View {
+    @ObservedObject var frameState: LiveFrameState
+    let text: String
+
+    var body: some View {
+        if frameState.trackingWarningVisible {
+            Text(text)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.black)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(.yellow.opacity(0.9))
+                .clipShape(Capsule())
+                .padding(.bottom, 8)
+        }
     }
 }
 
@@ -335,8 +418,7 @@ struct LiveAnalysisView: View {
             MetalCameraView(renderer: viewModel.metalRenderer)
                 .ignoresSafeArea()
 
-            OverlayCanvas(instructions: viewModel.currentInstructions)
-                .ignoresSafeArea()
+            LiveOverlayCanvas(frameState: viewModel.frameState)
 
             VStack(spacing: 0) {
                 topBar
@@ -390,14 +472,21 @@ struct LiveAnalysisView: View {
                 .pickerStyle(.segmented)
 
                 if isAssessmentMode {
-                    Picker("Assessment", selection: $selectedAssessmentType) {
+                    Menu {
                         ForEach(AssessmentType.allCases) { type in
-                            Text(type.rawValue).tag(type)
+                            Button {
+                                selectedAssessmentType = type
+                            } label: {
+                                if selectedAssessmentType == type {
+                                    Label(type.rawValue, systemImage: "checkmark")
+                                } else {
+                                    Text(type.rawValue)
+                                }
+                            }
                         }
+                    } label: {
+                        dropdownLabel(text: selectedAssessmentType.rawValue)
                     }
-                    .pickerStyle(.menu)
-                    .tint(.white)
-                    .frame(maxWidth: .infinity, alignment: .leading)
 
                     let supportedPlanes = selectedAssessment.supportedPlanes
                     if supportedPlanes.count > 1 {
@@ -409,14 +498,21 @@ struct LiveAnalysisView: View {
                         .pickerStyle(.segmented)
                     }
                 } else {
-                    Picker("Exercise", selection: $selectedExerciseType) {
-                        ForEach(ExerciseType.allCases) { type in
-                            Text(type.rawValue).tag(type)
+                    Menu {
+                        ForEach(ExerciseConfig.all, id: \.type) { exercise in
+                            Button {
+                                selectedExerciseType = exercise.type
+                            } label: {
+                                if selectedExerciseType == exercise.type {
+                                    Label(exercise.displayName, systemImage: "checkmark")
+                                } else {
+                                    Text(exercise.displayName)
+                                }
+                            }
                         }
+                    } label: {
+                        dropdownLabel(text: selectedExercise.displayName)
                     }
-                    .pickerStyle(.menu)
-                    .tint(.white)
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 if currentRequiresSideSelection {
@@ -425,6 +521,20 @@ struct LiveAnalysisView: View {
                         Text("Right").tag(BodySide.right)
                     }
                     .pickerStyle(.segmented)
+                }
+
+                if !isAssessmentMode {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Overlay")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Picker("Overlay", selection: $viewModel.overlayMode) {
+                            ForEach(OverlayMode.allCases, id: \.self) { mode in
+                                Text(mode.rawValue).tag(mode)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                    }
                 }
 
                 if !viewModel.isRecording {
@@ -455,19 +565,19 @@ struct LiveAnalysisView: View {
                 .accessibilityLabel(viewModel.cameraPosition == .back ? "Switch to front camera" : "Switch to back camera")
 
                 if !isAssessmentMode {
-                    Button {
-                        viewModel.overlayMode = (viewModel.overlayMode == .simple) ? .fullHUD : .simple
+                    Menu {
+                        ForEach(CustomOverlayOption.allCases) { option in
+                            Toggle(option.rawValue, isOn: liveOverlayBinding(for: option))
+                        }
                     } label: {
-                        Image(systemName: viewModel.overlayMode == .fullHUD
-                            ? "gauge.with.dots.needle.bottom.100percent"
-                            : "gauge.with.dots.needle.bottom.50percent")
+                        Image(systemName: "line.diagonal")
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(.white)
                             .padding(10)
                             .background(.white.opacity(0.25))
                             .clipShape(Circle())
                     }
-                    .accessibilityLabel(viewModel.overlayMode == .fullHUD ? "Switch to Simple overlay" : "Switch to Full HUD overlay")
+                    .accessibilityLabel("Custom overlay options")
                 }
             }
         }
@@ -475,18 +585,28 @@ struct LiveAnalysisView: View {
         .background(.ultraThinMaterial)
     }
 
-    @ViewBuilder
-    private var trackingWarningBanner: some View {
-        if viewModel.trackingWarningVisible {
-            Text(currentTrackingWarning)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.black)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(.yellow.opacity(0.9))
-                .clipShape(Capsule())
-                .padding(.bottom, 8)
+    /// Large, obviously-tappable label for the exercise/assessment dropdown menus.
+    /// The whole row (full width, 44pt min height) is the hit target, so users no
+    /// longer have to land on just the small text to open the picker.
+    private func dropdownLabel(text: String) -> some View {
+        HStack(spacing: 8) {
+            Text(text)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+            Spacer(minLength: 4)
+            Image(systemName: "chevron.up.chevron.down")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(.white.opacity(0.85))
         }
+        .padding(.horizontal, 14)
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .background(.white.opacity(0.18), in: RoundedRectangle(cornerRadius: 12))
+        .contentShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    private var trackingWarningBanner: some View {
+        LiveTrackingWarning(frameState: viewModel.frameState, text: currentTrackingWarning)
     }
 
     private var bottomBar: some View {
@@ -508,9 +628,7 @@ struct LiveAnalysisView: View {
                     Text("REPS")
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(.secondary)
-                    Text("\(viewModel.repCount)")
-                        .font(.system(size: 44, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                    LiveRepCountLabel(frameState: viewModel.frameState)
                 }
                 .frame(minWidth: 80, alignment: .leading)
             }
@@ -554,10 +672,7 @@ struct LiveAnalysisView: View {
                     Text("PHASE")
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(.secondary)
-                    Text(viewModel.currentPhase?.rawValue.capitalized ?? "—")
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(.cyan)
-                        .multilineTextAlignment(.trailing)
+                    LivePhaseLabel(frameState: viewModel.frameState)
                 }
                 .frame(minWidth: 80, alignment: .trailing)
             }
@@ -602,5 +717,18 @@ struct LiveAnalysisView: View {
         } else {
             viewModel.startRecording()
         }
+    }
+
+    private func liveOverlayBinding(for option: CustomOverlayOption) -> Binding<Bool> {
+        Binding(
+            get: { viewModel.customOverlayOptions.contains(option) },
+            set: { isSelected in
+                if isSelected {
+                    viewModel.customOverlayOptions.insert(option)
+                } else {
+                    viewModel.customOverlayOptions.remove(option)
+                }
+            }
+        )
     }
 }

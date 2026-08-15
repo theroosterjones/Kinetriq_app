@@ -29,7 +29,21 @@ final class LandmarkSmoother {
         var lastTime: Double
     }
 
+    private struct AnchorState2D {
+        var samples: [SIMD2<Float>] = []
+        var locked: SIMD2<Float>?
+        var releaseFrames = 0
+    }
+
+    private struct AnchorState3D {
+        var samples: [SIMD3<Float>] = []
+        var locked: SIMD3<Float>?
+        var releaseFrames = 0
+    }
+
     private var channels: [String: ChannelState] = [:]
+    private var anchors2D: [String: AnchorState2D] = [:]
+    private var anchors3D: [String: AnchorState3D] = [:]
 
     /// - Parameters:
     ///   - minCutoff: Smoothness at rest. Lower = smoother but more lag at rest.
@@ -50,39 +64,143 @@ final class LandmarkSmoother {
     /// Pass `landmarks.timestamp` for accurate per-frame dt (required for offline
     /// video which processes faster than real time). Omit for convenience in
     /// real-time contexts where wall-clock time is close enough.
-    func smooth(key: String, position: SIMD2<Float>, timestamp: Double? = nil) -> SIMD2<Float> {
+    /// - Parameter maxSpeed: Optional velocity limit (coordinate units per second).
+    ///   When set, a single sample can't move the filtered estimate by more than
+    ///   `maxSpeed * dt`, so one-frame MediaPipe snaps (common when a joint self-
+    ///   occludes, e.g. the knee in deep flexion) are clamped instead of yanking
+    ///   the landmark. Sustained motion still tracks normally since each frame
+    ///   grants another step.
+    func smooth(key: String, position: SIMD2<Float>, timestamp: Double? = nil, maxSpeed: Float? = nil) -> SIMD2<Float> {
         let t = timestamp ?? Date().timeIntervalSince1970
         return SIMD2<Float>(
-            filter(key: "\(key)_x", value: position.x, time: t),
-            filter(key: "\(key)_y", value: position.y, time: t)
+            filter(key: "\(key)_x", value: position.x, time: t, maxSpeed: maxSpeed),
+            filter(key: "\(key)_y", value: position.y, time: t, maxSpeed: maxSpeed)
         )
     }
 
     /// Smooth a 3D world position (angle calculations).
-    func smooth3D(key: String, position: SIMD3<Float>, timestamp: Double? = nil) -> SIMD3<Float> {
+    func smooth3D(key: String, position: SIMD3<Float>, timestamp: Double? = nil, maxSpeed: Float? = nil) -> SIMD3<Float> {
         let t = timestamp ?? Date().timeIntervalSince1970
         // Use _wx / _wy / _wz keys to stay independent from the 2D _x / _y channels
         return SIMD3<Float>(
-            filter(key: "\(key)_wx", value: position.x, time: t),
-            filter(key: "\(key)_wy", value: position.y, time: t),
-            filter(key: "\(key)_wz", value: position.z, time: t)
+            filter(key: "\(key)_wx", value: position.x, time: t, maxSpeed: maxSpeed),
+            filter(key: "\(key)_wy", value: position.y, time: t, maxSpeed: maxSpeed),
+            filter(key: "\(key)_wz", value: position.z, time: t, maxSpeed: maxSpeed)
         )
+    }
+
+    /// Stabilize an expected-stationary 2D anchor such as a planted wrist or foot.
+    ///
+    /// The anchor locks after several close samples and ignores small MediaPipe jitter.
+    /// If the landmark genuinely relocates for consecutive frames, it unlocks and
+    /// re-establishes at the new position.
+    func stabilizeAnchor(
+        key: String,
+        position: SIMD2<Float>,
+        stableRadius: Float = 0.018,
+        releaseRadius: Float = 0.055,
+        requiredSamples: Int = 5,
+        requiredReleaseFrames: Int = 5
+    ) -> SIMD2<Float> {
+        var state = anchors2D[key] ?? AnchorState2D()
+        defer { anchors2D[key] = state }
+
+        if let locked = state.locked {
+            if simd_distance(position, locked) > releaseRadius {
+                state.releaseFrames += 1
+                if state.releaseFrames >= requiredReleaseFrames {
+                    state = AnchorState2D(samples: [position], locked: nil, releaseFrames: 0)
+                    return position
+                }
+            } else {
+                state.releaseFrames = 0
+            }
+            return locked
+        }
+
+        state.samples.append(position)
+        if state.samples.count > requiredSamples {
+            state.samples.removeFirst(state.samples.count - requiredSamples)
+        }
+
+        let average = state.samples.reduce(SIMD2<Float>.zero, +) / Float(state.samples.count)
+        let maxDistance = state.samples.map { simd_distance($0, average) }.max() ?? 0
+        if state.samples.count >= requiredSamples, maxDistance <= stableRadius {
+            state.locked = average
+            return average
+        }
+
+        return average
+    }
+
+    /// Stabilize an expected-stationary 3D anchor for angle calculations.
+    func stabilizeAnchor3D(
+        key: String,
+        position: SIMD3<Float>,
+        stableRadius: Float = 0.025,
+        releaseRadius: Float = 0.10,
+        requiredSamples: Int = 5,
+        requiredReleaseFrames: Int = 5
+    ) -> SIMD3<Float> {
+        var state = anchors3D[key] ?? AnchorState3D()
+        defer { anchors3D[key] = state }
+
+        if let locked = state.locked {
+            if simd_distance(position, locked) > releaseRadius {
+                state.releaseFrames += 1
+                if state.releaseFrames >= requiredReleaseFrames {
+                    state = AnchorState3D(samples: [position], locked: nil, releaseFrames: 0)
+                    return position
+                }
+            } else {
+                state.releaseFrames = 0
+            }
+            return locked
+        }
+
+        state.samples.append(position)
+        if state.samples.count > requiredSamples {
+            state.samples.removeFirst(state.samples.count - requiredSamples)
+        }
+
+        let average = state.samples.reduce(SIMD3<Float>.zero, +) / Float(state.samples.count)
+        let maxDistance = state.samples.map { simd_distance($0, average) }.max() ?? 0
+        if state.samples.count >= requiredSamples, maxDistance <= stableRadius {
+            state.locked = average
+            return average
+        }
+
+        return average
     }
 
     func reset() {
         channels.removeAll()
+        anchors2D.removeAll()
+        anchors3D.removeAll()
     }
 
     // MARK: - 1€ Filter Core
 
-    private func filter(key: String, value: Float, time: Double) -> Float {
+    private func filter(key: String, value rawValue: Float, time: Double, maxSpeed: Float? = nil) -> Float {
         guard let prev = channels[key] else {
-            channels[key] = ChannelState(xHat: value, dxHat: 0, lastTime: time)
-            return value
+            channels[key] = ChannelState(xHat: rawValue, dxHat: 0, lastTime: time)
+            return rawValue
         }
 
         // Clamp dt to avoid division-by-zero on duplicate timestamps
         let dt = max(Float(time - prev.lastTime), 1e-6)
+
+        // Spike rejection: cap how far one sample may jump from the current estimate.
+        // This kills the "rapid drift" seen when MediaPipe momentarily snaps a
+        // self-occluded joint, while still allowing real, sustained motion through.
+        var value = rawValue
+        if let maxSpeed {
+            let maxStep = max(maxSpeed * dt, 1e-4)
+            let delta = value - prev.xHat
+            if abs(delta) > maxStep {
+                value = prev.xHat + (delta < 0 ? -maxStep : maxStep)
+            }
+        }
 
         // Low-pass filter the derivative with a fixed cutoff
         let dx    = (value - prev.xHat) / dt
