@@ -2,6 +2,12 @@
 
 This document tracks project changes made to get KevLines successfully uploadable to TestFlight and aligned with App Store Connect requirements.
 
+## 2026-08-17 — Kinetriq 3.5.3 (48)
+
+### TestFlight
+- Marketing version `3.5.3`, build `48`. Same code as build `46` (score bands + overlay smoothing).
+- Build `47` was a re-upload of the older `45` archive and is missing overlay smoothing — testers should use `48` (or `46`), not `47`.
+
 ## 2026-08-15 — Kinetriq 3.5.3 (46)
 
 ### TestFlight

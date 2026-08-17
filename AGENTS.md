@@ -154,7 +154,7 @@ Saved-video and live exercise analysis support user-selected custom alignment ov
 - [ ] Additional exercises
 - [ ] Export analysis summary
 
-Last updated: **Kinetriq 3.5.3** build **46** (feature/bugfix release). Changes vs 3.5.3/45:
+Last updated: **Kinetriq 3.5.3** build **48** (same binary as 46; build-number bump so TestFlight “latest” is the complete 3.5.3). Changes vs 3.5.3/45:
 1. **Custom overlay smoothing** — center-foot, forearm, lower-leg, and back alignment lines now share `CustomOverlayState` smoothing: planted points (foot, ankle) lock against MediaPipe jitter; moving joints use the 1€ filter plus the same 2D spike caps as the analyzers (leg 2.5, arm 3.0) so extended guide lines no longer snap.
 
 History: **3.5.3** build **45** (feature/bugfix). Changes vs 3.5.2/43:
