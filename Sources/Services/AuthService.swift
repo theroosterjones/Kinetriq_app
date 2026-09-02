@@ -15,7 +15,7 @@ final class AuthService: ObservableObject {
     private let encoder = JSONEncoder()
 
     private init() {
-        decoder.dateDecodingStrategy = .iso8601
+        decoder.dateDecodingStrategy = ISO8601Timestamp.decodingStrategy
         encoder.dateEncodingStrategy = .iso8601
         restoreSession()
     }
@@ -210,7 +210,7 @@ final class AuthService: ObservableObject {
 
         do {
             let data = try await supabaseRequest(path: path, query: query, method: "POST", bearerToken: nil, body: body)
-            let response = try decoder.decode(SupabaseAuthResponse.self, from: data)
+            let response = try AuthResponseParser.decode(data)
 
             // When email confirmation is enabled, sign-up returns a user with no
             // session (no access_token) until the address is confirmed. Surface a
@@ -450,6 +450,9 @@ final class AuthService: ObservableObject {
         if let urlError = error as? URLError {
             return withReference(friendlyNetworkMessage(urlError), "NET-\(urlError.errorCode)")
         }
+        if error is DecodingError {
+            return withReference("Something went wrong while signing in. Please try again.", "AUTH-DECODE")
+        }
         let nsError = error as NSError
         return withReference(error.localizedDescription, "\(nsError.domain)-\(nsError.code)")
     }
@@ -491,7 +494,52 @@ private struct SupabaseErrorPayload: Decodable {
 
 private struct EmptyBody: Encodable {}
 
-private struct SupabaseAuthResponse: Decodable {
+/// Parses GoTrue `/auth/v1/token` JSON. Isolated from `AuthService` so tests can
+/// cover the decode path without hopping onto the main-actor singleton.
+enum AuthResponseParser {
+    static func decode(_ data: Data) throws -> SupabaseAuthResponse {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = ISO8601Timestamp.decodingStrategy
+        return try decoder.decode(SupabaseAuthResponse.self, from: data)
+    }
+}
+
+/// GoTrue/Supabase timestamps include microseconds (`2026-08-27T06:46:52.624123Z`).
+/// Foundation's built-in `.iso8601` strategy rejects fractional seconds and the
+/// failure surfaces as NSCocoaErrorDomain 4864 after a successful HTTP 200.
+enum ISO8601Timestamp {
+    static var decodingStrategy: JSONDecoder.DateDecodingStrategy {
+        .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let raw = try container.decode(String.self)
+            if let date = parse(raw) {
+                return date
+            }
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Expected an ISO-8601 date, got \(raw)"
+            )
+        }
+    }
+
+    static func parse(_ string: String) -> Date? {
+        fractional.date(from: string) ?? internet.date(from: string)
+    }
+
+    private static let fractional: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private static let internet: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+}
+
+struct SupabaseAuthResponse: Decodable {
     let accessToken: String?
     let refreshToken: String?
     let expiresIn: TimeInterval?
@@ -517,7 +565,7 @@ private struct SupabaseAuthResponse: Decodable {
     }
 }
 
-private struct SupabaseUser: Decodable {
+struct SupabaseUser: Decodable {
     let id: String
     let email: String?
     let createdAt: Date?

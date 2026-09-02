@@ -21,7 +21,25 @@ final class PurchaseService: ObservableObject {
 
     private var isRevenueCatConfigured = false
 
+    /// Number of gated status lookups in flight. Launch and sign-in can overlap, so
+    /// this tracks a count rather than a bare flag — otherwise the first one to
+    /// finish clears `isLoading` while another is still resolving and the gate
+    /// decides too early.
+    private var inFlightStatusRequests = 0
+
     private init() {}
+
+    private func beginStatusRequest() {
+        inFlightStatusRequests += 1
+        isLoading = true
+    }
+
+    private func endStatusRequest() {
+        inFlightStatusRequests = max(0, inFlightStatusRequests - 1)
+        if inFlightStatusRequests == 0 {
+            isLoading = false
+        }
+    }
 
     var hasConfiguredAPIKey: Bool {
         AppEnvironment.revenueCatAPIKey != nil
@@ -46,7 +64,16 @@ final class PurchaseService: ObservableObject {
         hasProAccess
     }
 
-    func configure() {
+    /// Configures RevenueCat, seeding it with the signed-in Supabase user ID when
+    /// one is already known.
+    ///
+    /// Passing the ID here rather than following up with a separate `identify`
+    /// call matters on a first launch after install or sign-out, where RevenueCat
+    /// would otherwise start from an anonymous app user ID: the anonymous status
+    /// fetch and the `logIn` would race, and whichever finished first would clear
+    /// `isLoading` and win the write to `hasRevenueCatEntitlement`. A subscriber
+    /// could then see the gate paywall for a moment before the stream corrected it.
+    func configure(initialAppUserID: String? = nil) {
         guard let apiKey = AppEnvironment.revenueCatAPIKey else {
             hasRevenueCatEntitlement = false
             isLoading = false
@@ -55,9 +82,9 @@ final class PurchaseService: ObservableObject {
 
         guard !isRevenueCatConfigured else { return }
         Purchases.logLevel = .warn
-        Purchases.configure(withAPIKey: apiKey)
+        Purchases.configure(withAPIKey: apiKey, appUserID: initialAppUserID)
         isRevenueCatConfigured = true
-        Task { await refreshStatus() }
+        Task { await refreshStatus(showsLoadingGate: true) }
         observeCustomerInfo()
     }
 
@@ -79,8 +106,8 @@ final class PurchaseService: ObservableObject {
             return
         }
 
-        isLoading = true
-        defer { isLoading = false }
+        beginStatusRequest()
+        defer { endStatusRequest() }
 
         do {
             let result = try await Purchases.shared.logIn(appUserID)
@@ -104,14 +131,23 @@ final class PurchaseService: ObservableObject {
         }
     }
 
-    func refreshStatus() async {
+    /// Re-reads entitlements from RevenueCat.
+    ///
+    /// `showsLoadingGate` must stay `false` for anything that runs *from* the
+    /// paywall (recovery, offer-code redemption) or from foregrounding. The gate in
+    /// `ContentView` swaps the paywall out for the loading view while `isLoading` is
+    /// true, which cancels the paywall's `.task` and lets it re-fire when the paywall
+    /// comes back — so a gated refresh started there tears down the view that started
+    /// it and loops forever. Only the launch lookup in `configure()` raises the gate;
+    /// sign-in raises it through `identify(appUserID:)` instead.
+    func refreshStatus(showsLoadingGate: Bool = false) async {
         guard isRevenueCatConfigured else {
             isLoading = false
             return
         }
 
-        isLoading = true
-        defer { isLoading = false }
+        if showsLoadingGate { beginStatusRequest() }
+        defer { if showsLoadingGate { endStatusRequest() } }
 
         do {
             let info = try await Purchases.shared.customerInfo()

@@ -19,7 +19,10 @@ final class RowAnalyzer: ExerciseAnalyzer {
 
     private let smoother = LandmarkSmoother()
     // invertPhases: true — rowing (pulling elbow back) closes the joint (angle ↓) = concentric.
-    private let repCounter = RepCounter(extendedThreshold: 150, flexedThreshold: 90)
+    // Extended 140: world-landmark elbow at the hang tops out ~140–155° and never
+    // crossed 150 (0 reps). Same ceiling as ElbowAnalyzer.
+    // Flexed 100: a row’s squeeze often reads ~90–110°, so 90 never entered .flexed.
+    private let repCounter = RepCounter(extendedThreshold: 140, flexedThreshold: 100)
     private let tempoTracker = TempoTracker(invertPhases: true)
 
     /// Spike-rejection velocity limits for the arm chain (see `SquatAnalyzer`).

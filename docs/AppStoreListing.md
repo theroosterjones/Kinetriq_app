@@ -81,6 +81,18 @@ form,lifting,squat,deadlift,workout,gym,rep counter,tempo,pose,posture,mobility,
 
 ## 5. What's New (version notes)
 
+### 3.5.5
+
+> Fixes a bug that could leave the app flipping between the loading screen and
+> the subscription screen after signing in. Sign in with Apple now completes
+> reliably after the account is created, and Row analysis counts reps through a
+> full hang-to-squeeze range.
+
+### 3.5.4
+
+> Sign in with Apple now completes reliably after the account is created. Row
+> analysis counts reps through a full hang-to-squeeze range.
+
 ### 3.5.3
 
 > Form score now grades depth consistency in finer bands, no longer penalizes a
