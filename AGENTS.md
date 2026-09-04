@@ -94,8 +94,8 @@ GoTrue `/auth/v1/token` JSON includes `created_at` with microseconds (e.g. `2026
 ### Accounts, subscriptions, and offer codes
 
 - Supabase Auth provides the stable user ID. After login, pass the Supabase UUID to RevenueCat as the app user ID.
-- RevenueCat entitlement: `kinetriq_pro` (legacy accepted IDs during migration: `pro`, `Kinetriq Pro`).
-- App Store products: `com.kevinjones.kinetriq.pro.monthly` and `com.kevinjones.kinetriq.pro.yearly`.
+- RevenueCat entitlement: the live one is **`Kinetriq Pro`** (with the space). `kinetriq_pro` and `pro` are also accepted, but nothing is configured under them — every subscriber today is unlocked by `Kinetriq Pro` alone. **Do not "clean up" `acceptedEntitlementIDs`**; dropping that string revokes Pro for every user on both platforms. Verified against live `CustomerInfo` 2026-09-02.
+- App Store products: `com.kevinkjones.kinetriq.monthly` and `com.kevinkjones.kinetriq.annual`. The `kevink` spelling is correct — the bundle ID is `com.kevinjones.Kinetriq`, the products are not.
 - **App-level Pro access in shipping builds is `active RevenueCat entitlement` only.** A local `developmentUnlocked` shortcut exists **only under `#if DEBUG`** (when no RevenueCat key is configured) and can never grant access in Release. Do not reintroduce any other unlock path.
 - **In-app promo-code redemption was removed for App Store compliance (Guideline 3.1.1).** Free months, discounts, and comp access must be granted through **Apple App Store offer codes** (redeemed via `SKPaymentQueue.presentCodeRedemptionSheet()` in-app, or via the App Store) — never through app code, a text field, or a backend call that flips entitlement client-side.
 - The Supabase `redeem-promo-code` Edge Function and `promo_codes` table remain in the repo for reference/history but are **not wired to in-app entitlement**. The former `PromoCodeView` and `PromoRedemptionService` were deleted; `SubscriptionAccessState` no longer has a `backendEntitlement` field.

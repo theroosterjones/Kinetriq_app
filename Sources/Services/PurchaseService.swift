@@ -13,11 +13,20 @@ final class PurchaseService: ObservableObject {
     @Published private(set) var isLoading = true
     @Published var purchaseError: String?
 
-    static let entitlementID = "kinetriq_pro"
-    static let acceptedEntitlementIDs = ["kinetriq_pro", "pro", "Kinetriq Pro"]
+    /// Identifiers that unlock Pro, live one first.
+    ///
+    /// The entitlement configured in RevenueCat is **`Kinetriq Pro`** — every current
+    /// subscriber on both platforms is unlocked by that string alone, so it is load-bearing,
+    /// not legacy, and removing it revokes Pro for everyone at once. `kinetriq_pro` is the
+    /// intended rename and is accepted ahead of time so that switch needs no client release;
+    /// `pro` predates both. Keep Android's `proEntitlementIds` in step with this list.
+    static let acceptedEntitlementIDs = ["Kinetriq Pro", "kinetriq_pro", "pro"]
 
-    static let monthlyProductID = "com.kevinjones.kinetriq.pro.monthly"
-    static let yearlyProductID = "com.kevinjones.kinetriq.pro.yearly"
+    /// App Store product identifiers, as registered in App Store Connect. The `kevink`
+    /// spelling and the missing `.pro` segment are both real — verified against live
+    /// `CustomerInfo`, which reports `com.kevinkjones.kinetriq.monthly` / `.annual`.
+    static let monthlyProductID = "com.kevinkjones.kinetriq.monthly"
+    static let yearlyProductID = "com.kevinkjones.kinetriq.annual"
 
     private var isRevenueCatConfigured = false
 
