@@ -154,6 +154,23 @@ Related: a `private func` on a SwiftUI `View` is **not** main-actor isolated. Ca
 - Target: **KinetriqTests**; physical iPhone for Metal live preview.
 - `@testable import Kinetriq` in all test files.
 
+## Releasing
+
+`scripts/release.sh` does the whole TestFlight run from the command line — version bump, `xcodegen generate`, archive, distribution export, upload. No Xcode UI needed.
+
+```
+scripts/release.sh              # bump build number, keep marketing version
+scripts/release.sh 3.5.7        # set marketing version, bump build
+scripts/release.sh 3.5.7 55     # both explicit
+scripts/release.sh --no-upload  # archive + export only
+```
+
+- Archives land in **Xcode's Organizer** (`~/Library/Developer/Xcode/Archives/<date>/`), not the repo.
+- Signing is automatic via `-allowProvisioningUpdates`; it creates the App Store distribution profile on demand, so no manual certificate setup is required.
+- `manageAppVersionAndBuildNumber` is **false** so App Store Connect can't silently auto-increment the build away from the committed one. The script also verifies the built archive's `CFBundleVersion` matches what was requested before exporting.
+- `Upload Symbols Failed` warnings for `MediaPipeTasksVision` / `MediaPipeCommonGraphLibraries` are **expected** — those prebuilt frameworks ship without dSYMs and it does not block TestFlight.
+- The script does not commit. Commit the version bump and update the release notes at the bottom of this file afterwards.
+
 ## What to avoid
 
 - Drive-by refactors unrelated to the task.
