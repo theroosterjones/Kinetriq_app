@@ -3,7 +3,7 @@ import simd
 
 /// Tracks the front knee angle (hip→knee→ankle) for the lunge.
 /// Film from a strict side profile with the working leg closest to the camera.
-/// Rep cycle: standing (~165°) → bottom of lunge (~90°) → back to standing.
+/// Rep cycle: standing (~150–160°) → bottom of lunge (~70–90°) → back to standing.
 final class LungeAnalyzer: ExerciseAnalyzer {
 
     let exerciseType: ExerciseType = .lunge
@@ -14,7 +14,10 @@ final class LungeAnalyzer: ExerciseAnalyzer {
     }
 
     private let smoother     = LandmarkSmoother()
-    private let repCounter   = RepCounter(extendedThreshold: 155, flexedThreshold: 100)
+    // Extended 145: the front knee in a split stance is never locked out, and the
+    // world-landmark top of a real rep reads ~154° — 155 dropped those reps entirely.
+    // 145 keeps a 45° hysteresis band above the flexed gate so partials still don't count.
+    private let repCounter   = RepCounter(extendedThreshold: 145, flexedThreshold: 100)
     private let tempoTracker = TempoTracker()
 
     /// Spike-rejection velocity limits for the leg chain (see `SquatAnalyzer`).

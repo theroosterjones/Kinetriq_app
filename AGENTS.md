@@ -91,6 +91,12 @@ GoTrue `/auth/v1/token` JSON includes `created_at` with microseconds (e.g. `2026
 
 `ContentView` renders `loadingView` **instead of** `PaywallView` whenever `PurchaseService.isLoading` is true, so raising that flag unmounts the paywall and cancels its `.task`. Any status refresh that runs *from* the paywall (`recoverEntitlementsIfNeeded`, offer-code redemption) or from foregrounding must use **`refreshStatus(showsLoadingGate: false)`** — the default. A gated refresh started there tears down the view that started it; `isLoading` then clears, the paywall re-enters, its `.task` fires again, and the app flashes between the loading view and the paywall forever (cached `customerInfo()` makes each lap milliseconds). Only **`configure()`** (launch) and **`identify(appUserID:)`** (sign-in) may raise the gate — sign-in needs it so a subscriber doesn't flash past the paywall while `logIn` resolves.
 
+### Share sheets present with `.sheet(item:)` (do not regress)
+
+Present the post-recording/post-export share sheet with **`.sheet(item: $sharePayload)`** and the `SharePayload` wrapper, never `.sheet(isPresented:)` plus a separate optional URL read inside the closure. With the `isPresented` form the content closure can evaluate before the URL `@State` write lands, the `if let` fails, and the user gets a **blank white sheet** with no way to save the video.
+
+Related: a `private func` on a SwiftUI `View` is **not** main-actor isolated. Calling it as `Task { await someAsyncFunc() }` from a button action hops off the main actor (SE-0338), so any `@State` writes inside race the view update. Mark such methods **`@MainActor`** — see `LiveAnalysisView.toggleRecording()`.
+
 ### Accounts, subscriptions, and offer codes
 
 - Supabase Auth provides the stable user ID. After login, pass the Supabase UUID to RevenueCat as the app user ID.
@@ -108,6 +114,7 @@ GoTrue `/auth/v1/token` JSON includes `created_at` with microseconds (e.g. `2026
 - `RowAnalyzer`: `RepCounter(extendedThreshold: 140, flexedThreshold: 100)` — hang never reached 150°; squeeze often sits ~90–110° so 90 never entered `.flexed`.
 - `HipHingeBackAnalyzer`: self-calibrating trunk-height signal; locks thresholds after 3 reps.
 - Squat: `extendedThreshold: 150` (accommodates real-world camera angles).
+- `LungeAnalyzer`: `RepCounter(extendedThreshold: 145, flexedThreshold: 100)`. The front knee in a split stance is never locked out at the top — a measured real rep peaked at **154°**, so the old 155° gate left the counter stuck in `.flexed` and silently dropped reps.
 - `LatPulldownAnalyzer` (Side): reps are driven by the **shoulder** angle (`hip→shoulder→elbow`), not elbow flexion — `RepCounter(extendedThreshold: 120, flexedThreshold: 70)`, `invertPhases: true`. Elbow flexion counted 0 reps because world-landmark arm extension tops out near 140–150° and never crossed the old 150° extended threshold.
 
 ### Sagittal joint-tip markers
@@ -124,7 +131,7 @@ GoTrue `/auth/v1/token` JSON includes `created_at` with microseconds (e.g. `2026
 |------|----------|------|-------|
 | Squat | `SquatAnalyzer` | Side | Hip angle HUD; extendedThreshold 150° |
 | Deadlift | `DeadliftAnalyzer` | Side | Film 15–30° off strict side |
-| Lunge | `LungeAnalyzer` | Side | Hip angle HUD |
+| Lunge | `LungeAnalyzer` | Side | Hip angle HUD; knee reps `RepCounter(145/100)` |
 | Hip Hinge (Side) | `HipHingeSideAnalyzer` | Side | |
 | Hip Hinge (Back) | `HipHingeBackAnalyzer` | Rear | Self-calibrating rep count |
 | Row | `RowAnalyzer` | Side | Elbow reps `RepCounter(140/100)`; auto-side fallback; invertPhases: true |
@@ -165,7 +172,11 @@ GoTrue `/auth/v1/token` JSON includes `created_at` with microseconds (e.g. `2026
 - [ ] Additional exercises
 - [ ] Export analysis summary
 
-Last updated: **Kinetriq 3.5.5** build **50**. Changes vs 3.5.4/49:
+Last updated: **Kinetriq 3.5.6** build **51**. Changes vs 3.5.5/50:
+1. **Live analysis: blank screen instead of the share sheet after Stop** — `LiveAnalysisView.toggleRecording()` was a nonisolated `private func` invoked as `Task { await … }`, so its `@State` writes ran off the main actor; combined with `.sheet(isPresented:)` reading `savedVideoURL` separately inside the closure, the sheet presented before the URL landed and rendered an empty `if let` — a blank white sheet with no way to save the recording. Now `@MainActor` plus `.sheet(item: $sharePayload)`, so the sheet cannot present without its URL. A failed `stopRecording()` also surfaces an alert instead of silently discarding the take.
+2. **Lunge dropped reps** — `LungeAnalyzer` extended gate lowered **155° → 145°**. The front knee in a split stance never locks out; a measured real rep peaked at 154°, so the counter stayed in `.flexed` and discarded reps. Covered by `LungeAnalyzerTests`.
+
+History: **3.5.5** build **50**. Changes vs 3.5.4/49:
 1. **Paywall ↔ loading flash loop** — `PaywallView`'s `.task` called `recoverEntitlementsIfNeeded()`, which raised `PurchaseService.isLoading`, which made `ContentView` swap the paywall out for `loadingView` and cancel that very task. Clearing the flag re-entered the paywall and re-fired the task, forever. `refreshStatus(showsLoadingGate:)` now defaults to silent; only `configure()` and `identify(appUserID:)` raise the gate. Hit every signed-in non-subscriber on the shipped build.
 
 History: **3.5.4** build **49**. Changes vs 3.5.3/48:

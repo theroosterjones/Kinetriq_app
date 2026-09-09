@@ -377,8 +377,8 @@ struct LiveAnalysisView: View {
     )?.defaultPlane ?? .frontal
     @State private var selectedSide: BodySide = .left
     @State private var showPermissionAlert = false
-    @State private var savedVideoURL: URL?
-    @State private var showShareSheet = false
+    @State private var sharePayload: SharePayload?
+    @State private var recordingErrorMessage: String?
 
     private var selectedExercise: ExerciseConfig {
         ExerciseConfig.all.first { $0.type == selectedExerciseType } ?? ExerciseConfig.all[0]
@@ -441,8 +441,19 @@ struct LiveAnalysisView: View {
         } message: {
             Text("Allow camera access in Settings to use live form analysis.")
         }
-        .sheet(isPresented: $showShareSheet) {
-            if let url = savedVideoURL { ShareSheet(items: [url]) }
+        .sheet(item: $sharePayload) { payload in
+            ShareSheet(items: payload.items)
+        }
+        .alert(
+            "Recording Not Saved",
+            isPresented: Binding(
+                get: { recordingErrorMessage != nil },
+                set: { if !$0 { recordingErrorMessage = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) { recordingErrorMessage = nil }
+        } message: {
+            Text(recordingErrorMessage ?? "")
         }
         .onChange(of: selectedExerciseType)    { _, _ in reconfigure() }
         .onChange(of: selectedAssessmentType)  { _, newType in
@@ -708,15 +719,22 @@ struct LiveAnalysisView: View {
         viewModel.setAnalyzer(analyzer)
     }
 
+    /// `@MainActor` is required: this is called from a `Task` in a button action, and a
+    /// nonisolated `async` method hops off the main actor, so the `@State` writes below
+    /// would otherwise race the sheet presentation.
+    @MainActor
     private func toggleRecording() async {
-        if viewModel.isRecording {
-            if let url = await viewModel.stopRecording() {
-                savedVideoURL = url
-                showShareSheet = true
-            }
-        } else {
+        guard viewModel.isRecording else {
             viewModel.startRecording()
+            return
         }
+
+        guard let url = await viewModel.stopRecording() else {
+            recordingErrorMessage = "The recording could not be finalized, so there is nothing to save. Please try recording again."
+            return
+        }
+
+        sharePayload = SharePayload(items: [url])
     }
 
     private func liveOverlayBinding(for option: CustomOverlayOption) -> Binding<Bool> {
