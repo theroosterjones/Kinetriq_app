@@ -83,11 +83,25 @@ All four tempo slots use a **0.6-second threshold**: fractional seconds below 0.
 
 Saved-video and live exercise analysis support user-selected custom alignment overlays via `CustomOverlayOption`; assessments do not. Options default off and are appended after analyzer overlays so hardcoded analyzer lines should not duplicate them.
 
+### Supabase auth date decoding (do not regress)
+
+GoTrue `/auth/v1/token` JSON includes `created_at` with microseconds (e.g. `2026-08-27T06:46:52.624123Z`). Foundation’s built-in `.iso8601` strategy **rejects fractional seconds**. After a successful HTTP 200 the decoder throws and the app shows **NSCocoaErrorDomain 4864** (“The data couldn’t be read because it isn’t in the correct format”) — Sign in with Apple (and email/password) look broken even though Supabase already issued a session. Always decode auth JSON with **`ISO8601Timestamp.decodingStrategy`** via **`AuthResponseParser`** in `AuthService`. Covered by `AuthJSONDecodingTests`. Decode failures map to **`AUTH-DECODE`**, not the raw Cocoa string.
+
+### Paywall loading gate (do not regress)
+
+`ContentView` renders `loadingView` **instead of** `PaywallView` whenever `PurchaseService.isLoading` is true, so raising that flag unmounts the paywall and cancels its `.task`. Any status refresh that runs *from* the paywall (`recoverEntitlementsIfNeeded`, offer-code redemption) or from foregrounding must use **`refreshStatus(showsLoadingGate: false)`** — the default. A gated refresh started there tears down the view that started it; `isLoading` then clears, the paywall re-enters, its `.task` fires again, and the app flashes between the loading view and the paywall forever (cached `customerInfo()` makes each lap milliseconds). Only **`configure()`** (launch) and **`identify(appUserID:)`** (sign-in) may raise the gate — sign-in needs it so a subscriber doesn't flash past the paywall while `logIn` resolves.
+
+### Share sheets present with `.sheet(item:)` (do not regress)
+
+Present the post-recording/post-export share sheet with **`.sheet(item: $sharePayload)`** and the `SharePayload` wrapper, never `.sheet(isPresented:)` plus a separate optional URL read inside the closure. With the `isPresented` form the content closure can evaluate before the URL `@State` write lands, the `if let` fails, and the user gets a **blank white sheet** with no way to save the video.
+
+Related: a `private func` on a SwiftUI `View` is **not** main-actor isolated. Calling it as `Task { await someAsyncFunc() }` from a button action hops off the main actor (SE-0338), so any `@State` writes inside race the view update. Mark such methods **`@MainActor`** — see `LiveAnalysisView.toggleRecording()`.
+
 ### Accounts, subscriptions, and offer codes
 
 - Supabase Auth provides the stable user ID. After login, pass the Supabase UUID to RevenueCat as the app user ID.
-- RevenueCat entitlement: `kinetriq_pro` (legacy accepted IDs during migration: `pro`, `Kinetriq Pro`).
-- App Store products: `com.kevinjones.kinetriq.pro.monthly` and `com.kevinjones.kinetriq.pro.yearly`.
+- RevenueCat entitlement: the live one is **`Kinetriq Pro`** (with the space). `kinetriq_pro` and `pro` are also accepted, but nothing is configured under them — every subscriber today is unlocked by `Kinetriq Pro` alone. **Do not "clean up" `acceptedEntitlementIDs`**; dropping that string revokes Pro for every user on both platforms. Verified against live `CustomerInfo` 2026-09-02.
+- App Store products: `com.kevinkjones.kinetriq.monthly` and `com.kevinkjones.kinetriq.annual`. The `kevink` spelling is correct — the bundle ID is `com.kevinjones.Kinetriq`, the products are not.
 - **App-level Pro access in shipping builds is `active RevenueCat entitlement` only.** A local `developmentUnlocked` shortcut exists **only under `#if DEBUG`** (when no RevenueCat key is configured) and can never grant access in Release. Do not reintroduce any other unlock path.
 - **In-app promo-code redemption was removed for App Store compliance (Guideline 3.1.1).** Free months, discounts, and comp access must be granted through **Apple App Store offer codes** (redeemed via `SKPaymentQueue.presentCodeRedemptionSheet()` in-app, or via the App Store) — never through app code, a text field, or a backend call that flips entitlement client-side.
 - The Supabase `redeem-promo-code` Edge Function and `promo_codes` table remain in the repo for reference/history but are **not wired to in-app entitlement**. The former `PromoCodeView` and `PromoRedemptionService` were deleted; `SubscriptionAccessState` no longer has a `backendEntitlement` field.
@@ -97,8 +111,10 @@ Saved-video and live exercise analysis support user-selected custom alignment ov
 
 - Standard: **`RepCounter(extendedThreshold:flexedThreshold:)`** — larger angle = extended.
 - `ElbowAnalyzer`: `extendedThreshold: 140` (not 155 — world-landmark arm extension reads 140–155°; 155 caused 0 reps).
+- `RowAnalyzer`: `RepCounter(extendedThreshold: 140, flexedThreshold: 100)` — hang never reached 150°; squeeze often sits ~90–110° so 90 never entered `.flexed`.
 - `HipHingeBackAnalyzer`: self-calibrating trunk-height signal; locks thresholds after 3 reps.
 - Squat: `extendedThreshold: 150` (accommodates real-world camera angles).
+- `LungeAnalyzer`: `RepCounter(extendedThreshold: 145, flexedThreshold: 100)`. The front knee in a split stance is never locked out at the top — a measured real rep peaked at **154°**, so the old 155° gate left the counter stuck in `.flexed` and silently dropped reps.
 - `LatPulldownAnalyzer` (Side): reps are driven by the **shoulder** angle (`hip→shoulder→elbow`), not elbow flexion — `RepCounter(extendedThreshold: 120, flexedThreshold: 70)`, `invertPhases: true`. Elbow flexion counted 0 reps because world-landmark arm extension tops out near 140–150° and never crossed the old 150° extended threshold.
 
 ### Sagittal joint-tip markers
@@ -115,10 +131,10 @@ Saved-video and live exercise analysis support user-selected custom alignment ov
 |------|----------|------|-------|
 | Squat | `SquatAnalyzer` | Side | Hip angle HUD; extendedThreshold 150° |
 | Deadlift | `DeadliftAnalyzer` | Side | Film 15–30° off strict side |
-| Lunge | `LungeAnalyzer` | Side | Hip angle HUD |
+| Lunge | `LungeAnalyzer` | Side | Hip angle HUD; knee reps `RepCounter(145/100)` |
 | Hip Hinge (Side) | `HipHingeSideAnalyzer` | Side | |
 | Hip Hinge (Back) | `HipHingeBackAnalyzer` | Rear | Self-calibrating rep count |
-| Row | `RowAnalyzer` | Side | Auto-side fallback; invertPhases: true |
+| Row | `RowAnalyzer` | Side | Elbow reps `RepCounter(140/100)`; auto-side fallback; invertPhases: true |
 | Dips | `DipsAnalyzer` | Side | Elbow reps; shoulder angle vs chest/torso |
 | Lat Pulldown/Chin Up (Side) | `LatPulldownAnalyzer` | Side | Reps driven by **shoulder** angle (hip→shoulder→elbow), thresholds 120/70; invertPhases: true |
 | Lat Pulldown/Chin Up (Front) | `LatPulldownFrontAnalyzer` | Front/Back | Bilateral; invertPhases: true |
@@ -145,6 +161,8 @@ Saved-video and live exercise analysis support user-selected custom alignment ov
 - Changing `VideoReader` without reading **docs/VideoOrientation.md**.
 - Forgetting **`xcodegen generate`** after `project.yml` changes.
 - Skipping `resetForNewSession()` before a saved-video analysis run.
+- Decoding Supabase auth JSON with Foundation `.iso8601` (fractional `created_at` → NSCocoaErrorDomain 4864).
+- Calling `refreshStatus(showsLoadingGate: true)` from the paywall or from foregrounding (infinite loading ↔ paywall flash).
 
 ## Open to-do (v1.x)
 
@@ -154,7 +172,26 @@ Saved-video and live exercise analysis support user-selected custom alignment ov
 - [ ] Additional exercises
 - [ ] Export analysis summary
 
-Last updated: **Kinetriq 3.5.2** build **43** (feature/bugfix release). Changes vs 3.5.1/42:
+Last updated: **Kinetriq 3.5.6** build **51**. Changes vs 3.5.5/50:
+1. **Live analysis: blank screen instead of the share sheet after Stop** — `LiveAnalysisView.toggleRecording()` was a nonisolated `private func` invoked as `Task { await … }`, so its `@State` writes ran off the main actor; combined with `.sheet(isPresented:)` reading `savedVideoURL` separately inside the closure, the sheet presented before the URL landed and rendered an empty `if let` — a blank white sheet with no way to save the recording. Now `@MainActor` plus `.sheet(item: $sharePayload)`, so the sheet cannot present without its URL. A failed `stopRecording()` also surfaces an alert instead of silently discarding the take.
+2. **Lunge dropped reps** — `LungeAnalyzer` extended gate lowered **155° → 145°**. The front knee in a split stance never locks out; a measured real rep peaked at 154°, so the counter stayed in `.flexed` and discarded reps. Covered by `LungeAnalyzerTests`.
+
+History: **3.5.5** build **50**. Changes vs 3.5.4/49:
+1. **Paywall ↔ loading flash loop** — `PaywallView`'s `.task` called `recoverEntitlementsIfNeeded()`, which raised `PurchaseService.isLoading`, which made `ContentView` swap the paywall out for `loadingView` and cancel that very task. Clearing the flag re-entered the paywall and re-fired the task, forever. `refreshStatus(showsLoadingGate:)` now defaults to silent; only `configure()` and `identify(appUserID:)` raise the gate. Hit every signed-in non-subscriber on the shipped build.
+
+History: **3.5.4** build **49**. Changes vs 3.5.3/48:
+1. **Sign in with Apple JSON decode (NSCocoaErrorDomain 4864)** — GoTrue `created_at` includes fractional seconds; Swift’s `.iso8601` decoder rejected them after HTTP 200 so the session was never stored. `AuthService` now uses `ISO8601Timestamp` (with and without fractional seconds) for token + refresh decode. Remaining decode failures surface as `AUTH-DECODE`.
+2. **Row 0 reps** — `RowAnalyzer` elbow gates are now **140° extended / 100° flexed** (were 150 / 90). World-landmark hang never crossed 150°; a typical squeeze sits ~90–110° and never entered `.flexed`. Same 140° hang ceiling as `ElbowAnalyzer`.
+
+History: **3.5.3** build **48** (same binary as 46; build-number bump so TestFlight “latest” is the complete 3.5.3). Changes vs 3.5.3/45:
+1. **Custom overlay smoothing** — center-foot, forearm, lower-leg, and back alignment lines now share `CustomOverlayState` smoothing: planted points (foot, ankle) lock against MediaPipe jitter; moving joints use the 1€ filter plus the same 2D spike caps as the analyzers (leg 2.5, arm 3.0) so extended guide lines no longer snap.
+
+History: **3.5.3** build **45** (feature/bugfix). Changes vs 3.5.2/43:
+1. **Banded ROM consistency scoring** — peak-angle SD maps to discrete ROM scores: 0–1.5° → 100, 2–3° → 90, 4–5° → 80, 6–7° → 70, 8–10° → 50, 11–12° → 40, 12–13° → 30, 14–15° → 20, above 15° → 0.
+2. **Fatigue is not a score penalty** — concentric duration is excluded from tempo consistency so a set that slows on the way up no longer loses points. Coaching still notes concentric slowing as fatigue and a challenging set.
+3. **Fast-eccentric control caveat** — reps with an eccentric of 1.0 s or faster subtract up to 25 points (scaled by how many reps are rushed) and get a readout that the reps lack control.
+
+History: **3.5.2** build **43** (feature/bugfix). Changes vs 3.5.1/42:
 1. **Returning-subscriber paywall** — `PurchaseService.recoverEntitlementsIfNeeded()` runs when the gate paywall appears: a `customerInfo` refresh and, if still locked out, a one-time silent `restorePurchases()` that transfers an existing Apple-ID subscription onto the current app user ID so subscribers stop seeing the paywall on re-login. (Root cause of a persistent paywall is usually the RevenueCat dashboard "transfer purchases" behavior when a sub was bought under an anonymous/other app user ID — verify that setting too.)
 2. **In-app plan management** — `PaywallView` gained an `isManagement` mode (dismissable, with close button; the mandatory gate still has none per 2.1(a)). Settings adds "Change or Upgrade Plan"/"View Plans" presenting it as a sheet, plus a footer explaining monthly↔yearly switching, Apple management, and Restore.
 3. **Knee drift in deep flexion** — `LandmarkSmoother.smooth`/`smooth3D` gained an optional `maxSpeed` velocity limiter (spike rejection) applied to the squat hip/knee/ankle chain (2D `2.5` units/s, 3D `4.0` m/s) so single-frame MediaPipe snaps don't yank the landmark while real motion still tracks.

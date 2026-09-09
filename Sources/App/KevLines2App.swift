@@ -6,10 +6,10 @@ struct KinetriqApp: App {
 
     init() {
         AuthService.shared.bootstrap()
-        PurchaseService.shared.configure()
-        if let userID = AuthService.shared.currentUserID {
-            Task { await PurchaseService.shared.identify(appUserID: userID) }
-        }
+        // Seed RevenueCat with the restored Supabase user ID so the first status
+        // fetch already belongs to that account. A later sign-in is picked up by
+        // `ContentView`'s `currentUserID` observer.
+        PurchaseService.shared.configure(initialAppUserID: AuthService.shared.currentUserID)
     }
 
     var body: some Scene {

@@ -81,6 +81,28 @@ form,lifting,squat,deadlift,workout,gym,rep counter,tempo,pose,posture,mobility,
 
 ## 5. What's New (version notes)
 
+### 3.5.5
+
+> Fixes a bug that could leave the app flipping between the loading screen and
+> the subscription screen after signing in. Sign in with Apple now completes
+> reliably after the account is created, and Row analysis counts reps through a
+> full hang-to-squeeze range.
+
+### 3.5.4
+
+> Sign in with Apple now completes reliably after the account is created. Row
+> analysis counts reps through a full hang-to-squeeze range.
+
+### 3.5.3
+
+> Form score now grades depth consistency in finer bands, no longer penalizes a
+> concentric that slows as the set gets hard, and deducts for eccentrics of 1
+> second or faster. Coaching notes call out a challenging set versus reps that
+> lack control. Custom alignment overlays are smoother and no longer snap when
+> pose tracking flickers.
+
+### First public release
+
 > First public release of Kinetriq. On-device exercise form analysis, movement
 > assessments, per-rep breakdowns, coaching insights, shareable summaries, and
 > Kinetriq Pro.

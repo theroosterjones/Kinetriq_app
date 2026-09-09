@@ -28,18 +28,94 @@ final class RepMetricsTests: XCTestCase {
         XCTAssertEqual(score, 100)
     }
 
-    // MARK: - High ROM variance = low score
+    // MARK: - ROM peak-angle SD bands
 
-    func testHighROMVarianceLowersScore() {
+    func testROMScoreBandsFromPeakAngleStdDev() {
+        XCTAssertEqual(RepMetricsCollector.romScore(forPeakAngleStdDev: 0), 100)
+        XCTAssertEqual(RepMetricsCollector.romScore(forPeakAngleStdDev: 1.5), 100)
+        XCTAssertEqual(RepMetricsCollector.romScore(forPeakAngleStdDev: 2), 90)
+        XCTAssertEqual(RepMetricsCollector.romScore(forPeakAngleStdDev: 3), 90)
+        XCTAssertEqual(RepMetricsCollector.romScore(forPeakAngleStdDev: 4), 80)
+        XCTAssertEqual(RepMetricsCollector.romScore(forPeakAngleStdDev: 5), 80)
+        XCTAssertEqual(RepMetricsCollector.romScore(forPeakAngleStdDev: 6), 70)
+        XCTAssertEqual(RepMetricsCollector.romScore(forPeakAngleStdDev: 7), 70)
+        XCTAssertEqual(RepMetricsCollector.romScore(forPeakAngleStdDev: 8), 50)
+        XCTAssertEqual(RepMetricsCollector.romScore(forPeakAngleStdDev: 10), 50)
+        XCTAssertEqual(RepMetricsCollector.romScore(forPeakAngleStdDev: 11), 40)
+        XCTAssertEqual(RepMetricsCollector.romScore(forPeakAngleStdDev: 12), 40)
+        XCTAssertEqual(RepMetricsCollector.romScore(forPeakAngleStdDev: 12.5), 30)
+        XCTAssertEqual(RepMetricsCollector.romScore(forPeakAngleStdDev: 13), 30)
+        XCTAssertEqual(RepMetricsCollector.romScore(forPeakAngleStdDev: 14), 20)
+        XCTAssertEqual(RepMetricsCollector.romScore(forPeakAngleStdDev: 15), 20)
+        XCTAssertEqual(RepMetricsCollector.romScore(forPeakAngleStdDev: 16), 0)
+    }
+
+    func testModerateROMVarianceUsesEightToTenBand() {
         let collector = RepMetricsCollector()
-        // Peak angles: 80, 100, 120 → stddev ≈ 16.3 → ROM_Score = 100 - 5*16.3 ≈ 18
-        simulateRep(collector, repNumber: 1, peakAngle: 80, at: 0)
-        simulateRep(collector, repNumber: 2, peakAngle: 100, at: 4)
-        simulateRep(collector, repNumber: 3, peakAngle: 120, at: 8)
+        // Peak angles 80, 90, 100 → σ ≈ 8.2 → ROM band 50.
+        // Controlled ecc so tempo/control stay at 100: final = 0.6*50 + 0.4*100 = 70.
+        var t = 0.0
+        for (i, peak) in zip(1...3, [Float(80), 90, 100]) {
+            simulateTimedRep(collector, repNumber: i, peakAngle: peak, at: t)
+            t += 4.0
+        }
 
         let score = collector.computeScore()
         XCTAssertNotNil(score)
-        XCTAssertLessThan(score!, 50)
+        XCTAssertEqual(score!, 70)
+    }
+
+    // MARK: - High ROM variance still lowers the score
+
+    func testHighROMVarianceLowersScore() {
+        let collector = RepMetricsCollector()
+        // Peak angles: 80, 100, 120 → σ ≈ 16.3 → ROM 0 → final = 40
+        var t = 0.0
+        for (i, peak) in zip(1...3, [Float(80), 100, 120]) {
+            simulateTimedRep(collector, repNumber: i, peakAngle: peak, at: t)
+            t += 4.0
+        }
+
+        let score = collector.computeScore()
+        XCTAssertNotNil(score)
+        XCTAssertEqual(score!, 40)
+    }
+
+    // MARK: - Concentric slowing does not lower the score
+
+    func testConcentricSlowingDoesNotLowerScore() {
+        let steady = RepMetricsCollector()
+        let fatiguing = RepMetricsCollector()
+        var steadyT = 0.0
+        var fatigueT = 0.0
+        for i in 1...3 {
+            let concentric = 1.0 + Double(i - 1) * 0.6
+            simulateTimedRep(steady, repNumber: i, peakAngle: 90, at: steadyT, concentric: 1.0)
+            simulateTimedRep(fatiguing, repNumber: i, peakAngle: 90, at: fatigueT, concentric: concentric)
+            steadyT += 4.0
+            fatigueT += 3.0 + concentric
+        }
+
+        XCTAssertEqual(steady.computeScore(), fatiguing.computeScore())
+        XCTAssertEqual(steady.computeScore(), 100)
+    }
+
+    // MARK: - Fast eccentric lowers the score
+
+    func testFastEccentricLowersScore() {
+        let controlled = RepMetricsCollector()
+        let rushed = RepMetricsCollector()
+        var controlledT = 0.0
+        var rushedT = 0.0
+        for i in 1...3 {
+            simulateTimedRep(controlled, repNumber: i, peakAngle: 90, at: controlledT, eccentric: 2.0)
+            simulateTimedRep(rushed, repNumber: i, peakAngle: 90, at: rushedT, eccentric: 0.8)
+            controlledT += 4.0
+            rushedT += 2.8
+        }
+
+        XCTAssertEqual(controlled.computeScore(), 100)
+        XCTAssertEqual(rushed.computeScore(), 75)
     }
 
     // MARK: - Reset clears all state
@@ -111,17 +187,32 @@ final class RepMetricsTests: XCTestCase {
     // MARK: - Helpers
 
     private func simulateRep(_ collector: RepMetricsCollector, repNumber: Int, peakAngle: Float, at baseTime: Double) {
+        simulateTimedRep(collector, repNumber: repNumber, peakAngle: peakAngle, at: baseTime)
+    }
+
+    private func simulateTimedRep(
+        _ collector: RepMetricsCollector,
+        repNumber: Int,
+        peakAngle: Float,
+        at baseTime: Double,
+        eccentric: Double = 2.0,
+        pauseBottom: Double = 0.5,
+        concentric: Double = 1.0,
+        pauseTop: Double = 0.5
+    ) {
         collector.update(phase: .eccentric, angle: 160, repCount: repNumber - 1, timestamp: baseTime)
-        collector.update(phase: .eccentric, angle: 130, repCount: repNumber - 1, timestamp: baseTime + 0.25)
+        collector.update(phase: .eccentric, angle: 130, repCount: repNumber - 1, timestamp: baseTime + eccentric * 0.3)
         if peakAngle <= 100 {
-            collector.update(phase: .eccentric, angle: 100, repCount: repNumber - 1, timestamp: baseTime + 0.5)
+            collector.update(phase: .eccentric, angle: 100, repCount: repNumber - 1, timestamp: baseTime + eccentric * 0.6)
         }
-        collector.update(phase: .eccentric, angle: peakAngle, repCount: repNumber - 1, timestamp: baseTime + 0.75)
-        collector.update(phase: .pauseBottom, angle: peakAngle, repCount: repNumber - 1, timestamp: baseTime + 1.0)
-        collector.update(phase: .concentric, angle: min(peakAngle + 30, 140), repCount: repNumber - 1, timestamp: baseTime + 1.5)
-        collector.update(phase: .pauseTop, angle: 160, repCount: repNumber - 1, timestamp: baseTime + 2.0)
-        // Rep completes
-        collector.update(phase: .eccentric, angle: 155, repCount: repNumber, timestamp: baseTime + 2.5)
+        collector.update(phase: .eccentric, angle: peakAngle, repCount: repNumber - 1, timestamp: baseTime + eccentric * 0.9)
+        let pauseBottomStart = baseTime + eccentric
+        collector.update(phase: .pauseBottom, angle: peakAngle, repCount: repNumber - 1, timestamp: pauseBottomStart)
+        let concentricStart = pauseBottomStart + pauseBottom
+        collector.update(phase: .concentric, angle: min(peakAngle + 30, 140), repCount: repNumber - 1, timestamp: concentricStart)
+        let pauseTopStart = concentricStart + concentric
+        collector.update(phase: .pauseTop, angle: 160, repCount: repNumber - 1, timestamp: pauseTopStart)
+        collector.update(phase: .eccentric, angle: 155, repCount: repNumber, timestamp: pauseTopStart + pauseTop)
     }
 
     private func simulateIdenticalRep(_ collector: RepMetricsCollector, repNumber: Int, at baseTime: Double) {

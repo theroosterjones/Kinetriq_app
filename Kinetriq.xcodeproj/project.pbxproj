@@ -44,6 +44,7 @@
 		69E47FCE0F5162008FE640B8 /* VideoWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8A480814F92E7D53000E01A /* VideoWriter.swift */; };
 		74623297F4DF4BB910B1A5E6 /* KinetriqComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E83BB2F30E8DAAD2E1DA981 /* KinetriqComponents.swift */; };
 		787323B59E3BE8AE1850D42A /* SwiftTasksVision in Frameworks */ = {isa = PBXBuildFile; productRef = F7656B3F65336A267267C2C3 /* SwiftTasksVision */; };
+		80DB517608F5759A77192D30 /* CoachingInsightsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E8FF60D179C25712DD096BD /* CoachingInsightsTests.swift */; };
 		862DB4C438EDAB824B4856E2 /* ShoulderFlexionSagittalAssessment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 716F8DF76621314D09A9245B /* ShoulderFlexionSagittalAssessment.swift */; };
 		8745D728F4E7E178D28E01EF /* CameraService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 344197AEFE0D4FAA17164AA1 /* CameraService.swift */; };
 		896618256323389F034003C8 /* MetalCameraRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 431A75A8F8FBF0C0B0EC06AF /* MetalCameraRenderer.swift */; };
@@ -56,6 +57,7 @@
 		9D8305772C4A09CDDEBE748B /* RowAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9AF55648316D07C99A1244F /* RowAnalyzer.swift */; };
 		9F5029F1BB571319B37270D3 /* pose_landmarker_full.task in Resources */ = {isa = PBXBuildFile; fileRef = 4498B3BE6F00ABF7A99AEFBF /* pose_landmarker_full.task */; };
 		A3C20EFC0ADE50AC25F3BD53 /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 090DCCD12C493D01314F4A70 /* UserProfile.swift */; };
+		A5DDEC5DF389BD53D71920D7 /* LungeAnalyzerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 566B988C59CF47BF461F900B /* LungeAnalyzerTests.swift */; };
 		A8025D08908444866C359719 /* SquatAssessmentAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDCD651FA2225CF12802BE0A /* SquatAssessmentAnalyzer.swift */; };
 		AC7A02A4E8C49AB2168A4176 /* LandmarkSmoother.swift in Sources */ = {isa = PBXBuildFile; fileRef = B57994F2933D69D5B5D06FCE /* LandmarkSmoother.swift */; };
 		AC8F721F1A0AB5F94730CAFA /* PoseLandmarkerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F590C87C4B1E6C759B60DC9 /* PoseLandmarkerService.swift */; };
@@ -82,6 +84,7 @@
 		E1D054C56679A18DBDD0F912 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BE49E660C2D5245E9FE5F80 /* LoginView.swift */; };
 		E7581E7556B8C1E193AD0A90 /* HipHingeBackAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 902B92E32D104EE5C9967DCB /* HipHingeBackAnalyzer.swift */; };
 		EDFDD739EE052E9339FA734A /* LandmarkTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35EC4E9C0DF88DF73099D8F4 /* LandmarkTypes.swift */; };
+		EF1E2C6DA1106A1DA14CE070 /* AuthJSONDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29C737BA40F7C925577B51EA /* AuthJSONDecodingTests.swift */; };
 		EF71C7BEDC048E21E10F0F47 /* WorkoutHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 726F62AE06ED849AEF36B884 /* WorkoutHistoryView.swift */; };
 		F03B45B4D18D552DA063FCD9 /* LiveVideoRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E3C42BB2ECB68A9FED6F87A /* LiveVideoRecorder.swift */; };
 		FB181F97A90E65CF2E826AF0 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33B965AC3123B55942DE22D2 /* ContentView.swift */; };
@@ -106,6 +109,7 @@
 		17BFA6C076D0246293EAC043 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		187B3880475B40D2B23BA9B6 /* KinetriqSecrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = KinetriqSecrets.xcconfig; sourceTree = "<group>"; };
 		1B2E66D6799B760A5A86798E /* RowAnalyzerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RowAnalyzerTests.swift; sourceTree = "<group>"; };
+		29C737BA40F7C925577B51EA /* AuthJSONDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthJSONDecodingTests.swift; sourceTree = "<group>"; };
 		2D1DFF358AF7EBCBC971EE04 /* SquatAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SquatAnalyzer.swift; sourceTree = "<group>"; };
 		3052DDC279756B3D4080F6AE /* LatPulldownFrontAnalyzerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LatPulldownFrontAnalyzerTests.swift; sourceTree = "<group>"; };
 		30A2666E8FD2C44CD1E34012 /* AccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
@@ -119,13 +123,14 @@
 		3BDFDE5807DB7517EDE91EBA /* AssessmentAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssessmentAnalyzer.swift; sourceTree = "<group>"; };
 		40CDA404091BD32E105DCE6B /* DeadliftAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeadliftAnalyzer.swift; sourceTree = "<group>"; };
 		431A75A8F8FBF0C0B0EC06AF /* MetalCameraRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalCameraRenderer.swift; sourceTree = "<group>"; };
-		4498B3BE6F00ABF7A99AEFBF /* pose_landmarker_full.task */ = {isa = PBXFileReference; lastKnownFileType = file; path = pose_landmarker_full.task; sourceTree = "<group>"; };
+		4498B3BE6F00ABF7A99AEFBF /* pose_landmarker_full.task */ = {isa = PBXFileReference; path = pose_landmarker_full.task; sourceTree = "<group>"; };
 		452F17D22FE12996726B620D /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 		47093B0CA25AA10D9579CB4B /* RepCounterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepCounterTests.swift; sourceTree = "<group>"; };
 		4E64FD879DE7A1E4EDD9CFDF /* OverlayRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayRenderer.swift; sourceTree = "<group>"; };
 		4F02E144E6C4577287121AA9 /* ElbowAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElbowAnalyzer.swift; sourceTree = "<group>"; };
 		4F590C87C4B1E6C759B60DC9 /* PoseLandmarkerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseLandmarkerService.swift; sourceTree = "<group>"; };
 		535839998943F4E9795E2396 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		566B988C59CF47BF461F900B /* LungeAnalyzerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LungeAnalyzerTests.swift; sourceTree = "<group>"; };
 		5A310118653A0D93C1FEAEBE /* AppRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRouter.swift; sourceTree = "<group>"; };
 		5B4D3C3044E9AD386857E15E /* PurchaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseService.swift; sourceTree = "<group>"; };
 		5DACCEF6251495A02BEC0A82 /* ExerciseLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseLibrary.swift; sourceTree = "<group>"; };
@@ -147,6 +152,7 @@
 		8755ADDDAD932F0C59ED8A20 /* VideoReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoReader.swift; sourceTree = "<group>"; };
 		8BE49E660C2D5245E9FE5F80 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		8D2D2CCA0EF08F269610BC79 /* AssessmentPlanesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssessmentPlanesTests.swift; sourceTree = "<group>"; };
+		8E8FF60D179C25712DD096BD /* CoachingInsightsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachingInsightsTests.swift; sourceTree = "<group>"; };
 		902B92E32D104EE5C9967DCB /* HipHingeBackAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HipHingeBackAnalyzer.swift; sourceTree = "<group>"; };
 		A0E8C7D4897244D2EDA54742 /* OverheadPressAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverheadPressAnalyzer.swift; sourceTree = "<group>"; };
 		A28371D9BACFD2C0A37F7140 /* SquatSagittalAssessment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SquatSagittalAssessment.swift; sourceTree = "<group>"; };
@@ -175,7 +181,7 @@
 		DA76761A200D74E0AB0718BD /* RepMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepMetrics.swift; sourceTree = "<group>"; };
 		DCC874CC73FA43ACF9DAF577 /* AngleCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AngleCalculatorTests.swift; sourceTree = "<group>"; };
 		DDE3D928D58F055BD19F345F /* AnalysisResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisResult.swift; sourceTree = "<group>"; };
-		EE7DFA37B0CFE9CA55A0E391 /* Kinetriq.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Kinetriq.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		EE7DFA37B0CFE9CA55A0E391 /* Kinetriq.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Kinetriq.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F1482E6B8588FE560413E5B2 /* ShareableSummaryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareableSummaryCard.swift; sourceTree = "<group>"; };
 		FBD0C1D25B50B700C2A4DDB8 /* LatPulldownAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LatPulldownAnalyzer.swift; sourceTree = "<group>"; };
 		FD404884424EF5F6004B8B6B /* DipsAnalyzerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DipsAnalyzerTests.swift; sourceTree = "<group>"; };
@@ -203,10 +209,13 @@
 			children = (
 				DCC874CC73FA43ACF9DAF577 /* AngleCalculatorTests.swift */,
 				8D2D2CCA0EF08F269610BC79 /* AssessmentPlanesTests.swift */,
+				29C737BA40F7C925577B51EA /* AuthJSONDecodingTests.swift */,
+				8E8FF60D179C25712DD096BD /* CoachingInsightsTests.swift */,
 				D526D20F19F69CE80FF3FCC0 /* CustomOverlayBuilderTests.swift */,
 				FD404884424EF5F6004B8B6B /* DipsAnalyzerTests.swift */,
 				3A7AEAC64D1BF3BDE05E6E2D /* LandmarkSmootherAnchorTests.swift */,
 				3052DDC279756B3D4080F6AE /* LatPulldownFrontAnalyzerTests.swift */,
+				566B988C59CF47BF461F900B /* LungeAnalyzerTests.swift */,
 				47093B0CA25AA10D9579CB4B /* RepCounterTests.swift */,
 				FFE1BA99EBE8C4A2561A88C4 /* RepMetricsTests.swift */,
 				1B2E66D6799B760A5A86798E /* RowAnalyzerTests.swift */,
@@ -498,6 +507,11 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					22F6B17CE639CEE2A1BD05BF = {
+						DevelopmentTeam = YCKQ2HTCQ3;
+					};
+				};
 			};
 			buildConfigurationList = 5F7C51AD78DCEF58986587D5 /* Build configuration list for PBXProject "Kinetriq" */;
 			developmentRegion = en;
@@ -552,7 +566,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Locate the embedded framework plist — path differs between Debug and Archive builds.\nEMBEDDED_PLIST=\"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/MediaPipeTasksVision.framework/Info.plist\"\nif [ ! -f \"$EMBEDDED_PLIST\" ]; then\n  EMBEDDED_PLIST=\"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/MediaPipeTasksVision.framework/Info.plist\"\nfi\nif [ ! -f \"$EMBEDDED_PLIST\" ]; then\n  echo \"MediaPipeTasksVision Info.plist not found — skipping patch\"\n  exit 0\nfi\n\n# Use build-setting variables with hardcoded fallbacks in case they are not\n# exported into the script environment during Archive / Distribution builds.\nMIN_OS=\"${IPHONEOS_DEPLOYMENT_TARGET:-17.0}\"\nVERSION=\"${MARKETING_VERSION:-3.5.2}\"\nBUILD=\"${CURRENT_PROJECT_VERSION:-43}\"\n\nset_or_add() {\n  local key=\"$1\" val=\"$2\" plist=\"$3\"\n  /usr/libexec/PlistBuddy -c \"Set :${key} ${val}\" \"$plist\" >/dev/null 2>&1 || \\\n  /usr/libexec/PlistBuddy -c \"Add :${key} string ${val}\" \"$plist\"\n}\n\n/usr/libexec/PlistBuddy -c \"Delete :AvailableLibraries\"    \"$EMBEDDED_PLIST\" >/dev/null 2>&1 || true\n/usr/libexec/PlistBuddy -c \"Delete :XCFrameworkFormatVersion\" \"$EMBEDDED_PLIST\" >/dev/null 2>&1 || true\n\nset_or_add \"MinimumOSVersion\"       \"$MIN_OS\"  \"$EMBEDDED_PLIST\"\nset_or_add \"CFBundleShortVersionString\" \"$VERSION\" \"$EMBEDDED_PLIST\"\nset_or_add \"CFBundleVersion\"        \"$BUILD\"   \"$EMBEDDED_PLIST\"\nset_or_add \"CFBundlePackageType\"    \"FMWK\"     \"$EMBEDDED_PLIST\"\n\necho \"Patched $EMBEDDED_PLIST — MinOS=$MIN_OS version=$VERSION build=$BUILD\"\n";
+			shellScript = "# Locate the embedded framework plist — path differs between Debug and Archive builds.\nEMBEDDED_PLIST=\"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/MediaPipeTasksVision.framework/Info.plist\"\nif [ ! -f \"$EMBEDDED_PLIST\" ]; then\n  EMBEDDED_PLIST=\"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/MediaPipeTasksVision.framework/Info.plist\"\nfi\nif [ ! -f \"$EMBEDDED_PLIST\" ]; then\n  echo \"MediaPipeTasksVision Info.plist not found — skipping patch\"\n  exit 0\nfi\n\n# Use build-setting variables with hardcoded fallbacks in case they are not\n# exported into the script environment during Archive / Distribution builds.\nMIN_OS=\"${IPHONEOS_DEPLOYMENT_TARGET:-17.0}\"\nVERSION=\"${MARKETING_VERSION:-3.5.6}\"\nBUILD=\"${CURRENT_PROJECT_VERSION:-51}\"\n\nset_or_add() {\n  local key=\"$1\" val=\"$2\" plist=\"$3\"\n  /usr/libexec/PlistBuddy -c \"Set :${key} ${val}\" \"$plist\" >/dev/null 2>&1 || \\\n  /usr/libexec/PlistBuddy -c \"Add :${key} string ${val}\" \"$plist\"\n}\n\n/usr/libexec/PlistBuddy -c \"Delete :AvailableLibraries\"    \"$EMBEDDED_PLIST\" >/dev/null 2>&1 || true\n/usr/libexec/PlistBuddy -c \"Delete :XCFrameworkFormatVersion\" \"$EMBEDDED_PLIST\" >/dev/null 2>&1 || true\n\nset_or_add \"MinimumOSVersion\"       \"$MIN_OS\"  \"$EMBEDDED_PLIST\"\nset_or_add \"CFBundleShortVersionString\" \"$VERSION\" \"$EMBEDDED_PLIST\"\nset_or_add \"CFBundleVersion\"        \"$BUILD\"   \"$EMBEDDED_PLIST\"\nset_or_add \"CFBundlePackageType\"    \"FMWK\"     \"$EMBEDDED_PLIST\"\n\necho \"Patched $EMBEDDED_PLIST — MinOS=$MIN_OS version=$VERSION build=$BUILD\"\n";
 		};
 		8A5752A2314D83C39A844B71 /* Patch MediaPipe framework plist for App Store validation */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -570,7 +584,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "DERIVED_DATA_ROOT=\"${BUILD_DIR%/Build/*}\"\nIOS_PLIST=\"${DERIVED_DATA_ROOT}/SourcePackages/checkouts/SwiftTasksVision/Dependencies/MediaPipeTasksVision.xcframework/ios-arm64/MediaPipeTasksVision.framework/Info.plist\"\nSIM_PLIST=\"${DERIVED_DATA_ROOT}/SourcePackages/checkouts/SwiftTasksVision/Dependencies/MediaPipeTasksVision.xcframework/ios-arm64_x86_64-simulator/MediaPipeTasksVision.framework/Info.plist\"\n\nMIN_OS=\"${IPHONEOS_DEPLOYMENT_TARGET:-17.0}\"\nVERSION=\"${MARKETING_VERSION:-3.5.2}\"\nBUILD=\"${CURRENT_PROJECT_VERSION:-43}\"\n\nset_or_add() {\n  local key=\"$1\" val=\"$2\" plist=\"$3\"\n  /usr/libexec/PlistBuddy -c \"Set :${key} ${val}\" \"$plist\" >/dev/null 2>&1 || \\\n  /usr/libexec/PlistBuddy -c \"Add :${key} string ${val}\" \"$plist\"\n}\n\npatch_plist() {\n  plist_path=\"$1\"\n  if [ ! -f \"$plist_path\" ]; then\n    return 0\n  fi\n  set_or_add \"MinimumOSVersion\"          \"$MIN_OS\"  \"$plist_path\"\n  set_or_add \"CFBundleShortVersionString\" \"$VERSION\" \"$plist_path\"\n  set_or_add \"CFBundleVersion\"            \"$BUILD\"   \"$plist_path\"\n  echo \"Pre-build patched $plist_path\"\n}\n\npatch_plist \"$IOS_PLIST\"\npatch_plist \"$SIM_PLIST\"\n";
+			shellScript = "DERIVED_DATA_ROOT=\"${BUILD_DIR%/Build/*}\"\nIOS_PLIST=\"${DERIVED_DATA_ROOT}/SourcePackages/checkouts/SwiftTasksVision/Dependencies/MediaPipeTasksVision.xcframework/ios-arm64/MediaPipeTasksVision.framework/Info.plist\"\nSIM_PLIST=\"${DERIVED_DATA_ROOT}/SourcePackages/checkouts/SwiftTasksVision/Dependencies/MediaPipeTasksVision.xcframework/ios-arm64_x86_64-simulator/MediaPipeTasksVision.framework/Info.plist\"\n\nMIN_OS=\"${IPHONEOS_DEPLOYMENT_TARGET:-17.0}\"\nVERSION=\"${MARKETING_VERSION:-3.5.6}\"\nBUILD=\"${CURRENT_PROJECT_VERSION:-51}\"\n\nset_or_add() {\n  local key=\"$1\" val=\"$2\" plist=\"$3\"\n  /usr/libexec/PlistBuddy -c \"Set :${key} ${val}\" \"$plist\" >/dev/null 2>&1 || \\\n  /usr/libexec/PlistBuddy -c \"Add :${key} string ${val}\" \"$plist\"\n}\n\npatch_plist() {\n  plist_path=\"$1\"\n  if [ ! -f \"$plist_path\" ]; then\n    return 0\n  fi\n  set_or_add \"MinimumOSVersion\"          \"$MIN_OS\"  \"$plist_path\"\n  set_or_add \"CFBundleShortVersionString\" \"$VERSION\" \"$plist_path\"\n  set_or_add \"CFBundleVersion\"            \"$BUILD\"   \"$plist_path\"\n  echo \"Pre-build patched $plist_path\"\n}\n\npatch_plist \"$IOS_PLIST\"\npatch_plist \"$SIM_PLIST\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -654,10 +668,13 @@
 			files = (
 				3174863C641AFC7BC1732A2B /* AngleCalculatorTests.swift in Sources */,
 				CDCE739CC4F23BC22E6985B5 /* AssessmentPlanesTests.swift in Sources */,
+				EF1E2C6DA1106A1DA14CE070 /* AuthJSONDecodingTests.swift in Sources */,
+				80DB517608F5759A77192D30 /* CoachingInsightsTests.swift in Sources */,
 				1BA06A3F12AE72B453B65C99 /* CustomOverlayBuilderTests.swift in Sources */,
 				24B5DB09E8AE748FA6454587 /* DipsAnalyzerTests.swift in Sources */,
 				4F0AB379858B8739410A6E4F /* LandmarkSmootherAnchorTests.swift in Sources */,
 				CCF3606003E59BFC17728515 /* LatPulldownFrontAnalyzerTests.swift in Sources */,
+				A5DDEC5DF389BD53D71920D7 /* LungeAnalyzerTests.swift in Sources */,
 				58665ED36D6E0630925DC14D /* RepCounterTests.swift in Sources */,
 				2A575A4B841F9EF88BE78CEA /* RepMetricsTests.swift in Sources */,
 				16299A2BCE574E6DA3CE926C /* RowAnalyzerTests.swift in Sources */,
@@ -683,7 +700,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Kinetriq.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 43;
+				CURRENT_PROJECT_VERSION = 51;
 				DEVELOPMENT_TEAM = YCKQ2HTCQ3;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Kinetriq-Info.plist";
@@ -698,7 +715,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 3.5.2;
+				MARKETING_VERSION = 3.5.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kevinjones.Kinetriq;
 				PRODUCT_MODULE_NAME = Kinetriq;
 				PRODUCT_NAME = Kinetriq;
@@ -807,7 +824,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Kinetriq.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 43;
+				CURRENT_PROJECT_VERSION = 51;
 				DEVELOPMENT_TEAM = YCKQ2HTCQ3;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Kinetriq-Info.plist";
@@ -822,7 +839,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 3.5.2;
+				MARKETING_VERSION = 3.5.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kevinjones.Kinetriq;
 				PRODUCT_MODULE_NAME = Kinetriq;
 				PRODUCT_NAME = Kinetriq;

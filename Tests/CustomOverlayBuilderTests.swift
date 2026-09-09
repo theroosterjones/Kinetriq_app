@@ -83,6 +83,176 @@ final class CustomOverlayBuilderTests: XCTestCase {
         XCTAssertEqual(through.y, 0.85, accuracy: 0.0001)
     }
 
+    func testLowerLegAlignmentIgnoresSingleFrameKneeSnap() {
+        let state = CustomOverlayState()
+        var lastThrough: SIMD2<Float>?
+
+        for i in 0..<8 {
+            let instruction = CustomOverlayBuilder.instructions(
+                options: [.lowerLegAlignment],
+                landmarks: pose(
+                    knee: SIMD2<Float>(0.44, 0.74),
+                    timestamp: Double(i) * 0.033
+                ),
+                side: .left,
+                state: state
+            ).first
+            if case let .extendedLine(_, through, _, _)? = instruction {
+                lastThrough = through
+            }
+        }
+
+        let snapped = CustomOverlayBuilder.instructions(
+            options: [.lowerLegAlignment],
+            landmarks: pose(
+                knee: SIMD2<Float>(0.18, 0.74),
+                timestamp: 8 * 0.033
+            ),
+            side: .left,
+            state: state
+        ).first
+
+        guard case let .extendedLine(_, through, _, _)? = snapped,
+              let lastThrough else {
+            XCTFail("Expected smoothed lower-leg line")
+            return
+        }
+
+        XCTAssertEqual(through.x, lastThrough.x, accuracy: 0.09)
+        XCTAssertGreaterThan(through.x, 0.30)
+    }
+
+    func testLowerLegAlignmentLocksAnkleAgainstJitter() {
+        let state = CustomOverlayState()
+        var lockedFrom: SIMD2<Float>?
+
+        for i in 0..<6 {
+            let instruction = CustomOverlayBuilder.instructions(
+                options: [.lowerLegAlignment],
+                landmarks: pose(
+                    ankle: SIMD2<Float>(0.45 + Float(i) * 0.001, 0.92),
+                    knee: SIMD2<Float>(0.44, 0.74),
+                    timestamp: Double(i) * 0.033
+                ),
+                side: .left,
+                state: state
+            ).first
+            if i == 5, case let .extendedLine(from, _, _, _)? = instruction {
+                lockedFrom = from
+            }
+        }
+
+        let jittered = CustomOverlayBuilder.instructions(
+            options: [.lowerLegAlignment],
+            landmarks: pose(
+                ankle: SIMD2<Float>(0.49, 0.92),
+                knee: SIMD2<Float>(0.44, 0.74),
+                timestamp: 6 * 0.033
+            ),
+            side: .left,
+            state: state
+        ).first
+
+        guard case let .extendedLine(from, _, _, _)? = jittered else {
+            XCTFail("Expected locked ankle on lower-leg line")
+            return
+        }
+
+        XCTAssertEqual(from.x, lockedFrom?.x ?? -1, accuracy: 0.0001)
+        XCTAssertEqual(from.y, lockedFrom?.y ?? -1, accuracy: 0.0001)
+    }
+
+    func testForearmAlignmentIgnoresSingleFrameElbowSnap() {
+        let state = CustomOverlayState()
+        var lastThrough: SIMD2<Float>?
+        let elbow = SIMD2<Float>(0.48, 0.38)
+
+        for i in 0..<8 {
+            let instruction = CustomOverlayBuilder.instructions(
+                options: [.forearmAlignment],
+                landmarks: pose(
+                    wrist: SIMD2<Float>(0.55, 0.50),
+                    elbow: elbow,
+                    heelX: 0.41,
+                    toeX: 0.50,
+                    ankle: SIMD2<Float>(0.45, 0.92),
+                    knee: SIMD2<Float>(0.44, 0.74),
+                    timestamp: Double(i) * 0.033
+                ),
+                side: .left,
+                state: state
+            ).first
+            if case let .extendedLine(_, through, _, _)? = instruction {
+                lastThrough = through
+            }
+        }
+
+        let snapped = CustomOverlayBuilder.instructions(
+            options: [.forearmAlignment],
+            landmarks: pose(
+                wrist: SIMD2<Float>(0.55, 0.50),
+                elbow: SIMD2<Float>(0.22, 0.38),
+                heelX: 0.41,
+                toeX: 0.50,
+                ankle: SIMD2<Float>(0.45, 0.92),
+                knee: SIMD2<Float>(0.44, 0.74),
+                timestamp: 8 * 0.033
+            ),
+            side: .left,
+            state: state
+        ).first
+
+        guard case let .extendedLine(_, through, _, _)? = snapped,
+              let lastThrough else {
+            XCTFail("Expected smoothed forearm line")
+            return
+        }
+
+        XCTAssertEqual(through.x, lastThrough.x, accuracy: 0.11)
+        XCTAssertGreaterThan(through.x, 0.32)
+    }
+
+    func testBackAlignmentIgnoresSingleFrameShoulderSnap() {
+        let state = CustomOverlayState()
+        var lastThrough: SIMD2<Float>?
+
+        for i in 0..<8 {
+            let instruction = CustomOverlayBuilder.instructions(
+                options: [.backAlignment],
+                landmarks: pose(timestamp: Double(i) * 0.033),
+                side: .left,
+                exerciseType: .squat,
+                state: state
+            ).first
+            if case let .extendedLine(_, through, _, _)? = instruction {
+                lastThrough = through
+            }
+        }
+
+        var snappedLandmarks = pose(timestamp: 8 * 0.033).landmarks
+        snappedLandmarks[.leftShoulder] = landmark(0.12, 0.25)
+        let snapped = CustomOverlayBuilder.instructions(
+            options: [.backAlignment],
+            landmarks: PoseResult(
+                landmarks: snappedLandmarks,
+                worldLandmarks: [:],
+                timestamp: 8 * 0.033
+            ),
+            side: .left,
+            exerciseType: .squat,
+            state: state
+        ).first
+
+        guard case let .extendedLine(_, through, _, _)? = snapped,
+              let lastThrough else {
+            XCTFail("Expected smoothed back line")
+            return
+        }
+
+        XCTAssertEqual(through.x, lastThrough.x, accuracy: 0.09)
+        XCTAssertGreaterThan(through.x, 0.25)
+    }
+
     func testBackAlignmentUsesSpineMidlineForFrontBackExercises() {
         let instruction = CustomOverlayBuilder.instructions(
             options: [.backAlignment],
@@ -112,7 +282,19 @@ final class CustomOverlayBuilderTests: XCTestCase {
     }
 
     private var pose: PoseResult {
-        pose(heelX: 0.41, toeX: 0.50)
+        pose(timestamp: 0)
+    }
+
+    private func pose(timestamp: Double) -> PoseResult {
+        pose(
+            wrist: SIMD2<Float>(0.55, 0.50),
+            elbow: SIMD2<Float>(0.48, 0.38),
+            heelX: 0.41,
+            toeX: 0.50,
+            ankle: SIMD2<Float>(0.45, 0.92),
+            knee: SIMD2<Float>(0.44, 0.74),
+            timestamp: timestamp
+        )
     }
 
     private func pose(heelX: Float, toeX: Float) -> PoseResult {
@@ -134,19 +316,55 @@ final class CustomOverlayBuilderTests: XCTestCase {
         heelX: Float,
         toeX: Float
     ) -> PoseResult {
+        pose(
+            wrist: wrist,
+            elbow: elbow,
+            heelX: heelX,
+            toeX: toeX,
+            ankle: SIMD2<Float>(0.45, 0.92),
+            knee: SIMD2<Float>(0.44, 0.74),
+            timestamp: 0
+        )
+    }
+
+    private func pose(
+        ankle: SIMD2<Float> = SIMD2<Float>(0.45, 0.92),
+        knee: SIMD2<Float>,
+        timestamp: Double
+    ) -> PoseResult {
+        pose(
+            wrist: SIMD2<Float>(0.55, 0.50),
+            elbow: SIMD2<Float>(0.48, 0.38),
+            heelX: 0.41,
+            toeX: 0.50,
+            ankle: ankle,
+            knee: knee,
+            timestamp: timestamp
+        )
+    }
+
+    private func pose(
+        wrist: SIMD2<Float>,
+        elbow: SIMD2<Float>,
+        heelX: Float,
+        toeX: Float,
+        ankle: SIMD2<Float>,
+        knee: SIMD2<Float>,
+        timestamp: Double
+    ) -> PoseResult {
         PoseResult(
             landmarks: [
                 .leftShoulder: landmark(0.40, 0.25),
                 .leftElbow: landmark(elbow.x, elbow.y),
                 .leftWrist: landmark(wrist.x, wrist.y),
                 .leftHip: landmark(0.42, 0.55),
-                .leftKnee: landmark(0.44, 0.74),
-                .leftAnkle: landmark(0.45, 0.92),
+                .leftKnee: landmark(knee.x, knee.y),
+                .leftAnkle: landmark(ankle.x, ankle.y),
                 .leftHeel: landmark(heelX, 0.96),
                 .leftFootIndex: landmark(toeX, 0.96)
             ],
             worldLandmarks: [:],
-            timestamp: 0
+            timestamp: timestamp
         )
     }
 

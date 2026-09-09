@@ -47,6 +47,13 @@ struct RepMetric: Codable {
             pauseTop: pauseTopDuration
         )
     }
+
+    /// Eccentric of 1.0 s or faster is treated as lacking control.
+    static let fastEccentricThreshold: Double = 1.0
+
+    var lacksEccentricControl: Bool {
+        eccentricDuration.isFinite && eccentricDuration <= Self.fastEccentricThreshold
+    }
 }
 
 /// Collects per-rep metrics from frame-by-frame analysis output.
@@ -151,13 +158,19 @@ final class RepMetricsCollector {
 
     // MARK: - Scoring
 
-    /// Exercise consistency score (0--100). Nil if fewer than 3 completed reps.
+    /// Exercise score (0--100). Nil if fewer than 3 completed reps.
+    ///
+    /// Combines banded ROM consistency (60%) and tempo consistency (40%), then
+    /// subtracts a control penalty when eccentrics are 1.0 s or faster. Concentric
+    /// slowing across a set is excluded from tempo consistency so fatigue is not punished.
     func computeScore() -> Int? {
         guard completedReps.count >= 3 else { return nil }
 
         let romScore = romConsistencyScore()
         let tempoScore = tempoConsistencyScore()
-        return max(0, min(100, Int((0.6 * Double(romScore) + 0.4 * Double(tempoScore)).rounded())))
+        let consistency = 0.6 * Double(romScore) + 0.4 * Double(tempoScore)
+        let controlPenalty = fastEccentricPenalty()
+        return max(0, min(100, Int((consistency - controlPenalty).rounded())))
     }
 
     func reset() {
@@ -178,21 +191,44 @@ final class RepMetricsCollector {
         phaseAccumulators[phase, default: 0] += max(0, timestamp - start)
     }
 
-    /// ROM consistency: 100 - 5 * stddev(peak angles). Lower variance = better.
+    /// ROM consistency from peak-angle standard deviation, in discrete bands.
+    /// Gaps between listed ranges inherit the next lower band (e.g. 1.6°–1.9° → 90).
+    /// Exactly 12° uses the 11–12 band (40); above 15° scores 0.
     private func romConsistencyScore() -> Int {
         let peaks = completedReps.map { $0.peakFlexionAngle }
-        let sd = stddev(peaks)
-        return max(0, Int((100.0 - 5.0 * Double(sd)).rounded()))
+        return Self.romScore(forPeakAngleStdDev: stddev(peaks))
     }
 
-    /// Tempo consistency: 100 - 50 * avg(stddev of each phase duration). Lower variance = better.
+    static func romScore(forPeakAngleStdDev sd: Float) -> Int {
+        guard sd.isFinite, sd >= 0 else { return 0 }
+        switch sd {
+        case ...1.5:  return 100  // 0–1.5°
+        case ...3:    return 90   // 2–3°
+        case ...5:    return 80   // 4–5°
+        case ...7:    return 70   // 6–7°
+        case ...10:   return 50   // 8–10°
+        case ...12:   return 40   // 11–12°
+        case ...13:   return 30   // 12–13°
+        case ...15:   return 20   // 14–15°
+        default:      return 0
+        }
+    }
+
+    /// Tempo consistency from eccentric and pause phases only. Concentric duration
+    /// is omitted so a fatiguing set that slows on the way up is not penalized.
     private func tempoConsistencyScore() -> Int {
         let eccSD = stddev(completedReps.map { Float($0.eccentricDuration) })
         let pbSD  = stddev(completedReps.map { Float($0.pauseBottomDuration) })
-        let conSD = stddev(completedReps.map { Float($0.concentricDuration) })
         let ptSD  = stddev(completedReps.map { Float($0.pauseTopDuration) })
-        let avgSD = Double(eccSD + pbSD + conSD + ptSD) / 4.0
+        let avgSD = Double(eccSD + pbSD + ptSD) / 3.0
         return max(0, Int((100.0 - 50.0 * avgSD).rounded()))
+    }
+
+    /// Up to 25 points off when every completed rep has an eccentric of 1.0 s or faster.
+    private func fastEccentricPenalty() -> Double {
+        let fastCount = completedReps.filter(\.lacksEccentricControl).count
+        guard !completedReps.isEmpty else { return 0 }
+        return (Double(fastCount) / Double(completedReps.count)) * 25.0
     }
 
     private func stddev(_ values: [Float]) -> Float {
