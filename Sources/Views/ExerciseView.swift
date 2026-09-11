@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import UIKit
 import PhotosUI
 import Photos
@@ -253,6 +254,7 @@ private enum AnalysisMode: String, CaseIterable {
 
 struct ExerciseView: View {
     @EnvironmentObject private var router: AppRouter
+    @Environment(\.modelContext) private var modelContext
     @StateObject private var processor = VideoProcessor()
 
     @State private var analysisMode: AnalysisMode = .savedVideo
@@ -288,6 +290,10 @@ struct ExerciseView: View {
     @State private var isPreparingExport = false
 
     @State private var hasRestoredSettings = false
+    /// Fault-triggered technique lessons for the run that just finished. Held in
+    /// state rather than recomputed in `body` so the analysis, not a view update,
+    /// decides when they change.
+    @State private var techniqueLessons: [TechniqueLesson] = []
 
     private var selectedExercise: ExerciseConfig {
         ExerciseConfig.all.first { $0.type == selectedExerciseType } ?? ExerciseConfig.all[0]
@@ -326,6 +332,7 @@ struct ExerciseView: View {
                             loadingVideoSection
                             analyzeSection
                             resultsSection
+                            TechniqueLessonSection(lessons: techniqueLessons)
                             shareActionsSection
                         } else {
                             liveCameraHero
@@ -1039,6 +1046,7 @@ struct ExerciseView: View {
             analyzedOverlayMode = nil
             analysisSummary = nil
             assessmentMetrics = nil
+            techniqueLessons = []
             player = nil
         }
 
@@ -1062,6 +1070,7 @@ struct ExerciseView: View {
                 analyzedVideoURL = nil
                 analysisSummary = nil
                 assessmentMetrics = nil
+                techniqueLessons = []
                 player = AVPlayer(url: url)
             }
         } catch {
@@ -1075,8 +1084,10 @@ struct ExerciseView: View {
     private func analyzeVideo() async {
         guard let inputURL = selectedVideoURL else { return }
 
-        let outputURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("analyzed_\(UUID().uuidString).mp4")
+        // Render into app-owned storage rather than the temp directory: this run is
+        // about to become a history entry, and iOS can purge temp at any time.
+        let recordID = UUID()
+        let outputURL = AnalysisStorage.videoDestination(for: recordID)
 
         let analyzer: FrameAnalyzerProtocol
         let assessmentAnalyzerRef: AssessmentAnalyzer?
@@ -1112,7 +1123,21 @@ struct ExerciseView: View {
                 analyzedOverlayMode = analysisCategory == .exercise ? overlayMode : .simple
                 player = AVPlayer(url: outputURL)
             }
+
+            let thumbnail = await AnalysisStorage.makeThumbnail(from: outputURL, id: recordID)
+            await MainActor.run {
+                saveToHistory(
+                    id: recordID,
+                    summary: summary,
+                    metrics: metrics,
+                    videoFileName: AnalysisStorage.videoFileName(for: recordID),
+                    thumbnailFileName: thumbnail
+                )
+            }
         } catch {
+            // Nothing will reference a half-written render, so don't leave it behind.
+            AnalysisStorage.delete(fileName: AnalysisStorage.videoFileName(for: recordID))
+
             let ns = error as NSError
             AnalysisLog.ui.error(
                 "analyzeVideo failed domain=\(ns.domain, privacy: .public) code=\(ns.code, privacy: .public) \(error.localizedDescription, privacy: .public)"
@@ -1122,6 +1147,59 @@ struct ExerciseView: View {
                 showingError = true
             }
         }
+    }
+
+    /// Persists the run that just finished so it shows up in Progress and can feed
+    /// trend coaching. Failure is deliberately silent — the user already has their
+    /// result on screen, and an alert about the history database would be noise.
+    @MainActor
+    private func saveToHistory(
+        id: UUID,
+        summary: AnalysisSummary,
+        metrics: AssessmentMetrics?,
+        videoFileName: String?,
+        thumbnailFileName: String?
+    ) {
+        let record: AnalysisRecord
+
+        if analysisCategory == .assessment, let metrics {
+            record = AnalysisRecord.assessment(
+                metrics: metrics,
+                assessmentType: selectedAssessmentType,
+                plane: selectedAssessmentPlane,
+                side: selectedSide,
+                source: .savedVideo,
+                duration: summary.duration,
+                poseDetectionRate: summary.poseDetectionRate,
+                insights: CoachingInsights
+                    .assessment(metrics: metrics, trackingRate: summary.poseDetectionRate)
+                    .map(\.text),
+                recordID: id
+            )
+        } else {
+            record = AnalysisRecord.exercise(
+                summary: summary,
+                exerciseType: selectedExerciseType,
+                side: selectedSide,
+                source: .savedVideo,
+                insights: CoachingInsights
+                    .exercise(summary: summary, exerciseType: selectedExerciseType)
+                    .map(\.text),
+                recordID: id
+            )
+        }
+
+        // Read history *before* inserting, so the new record is not compared against
+        // itself when establishing this user's best range.
+        let history = AnalysisLibrary
+            .fetchHistory(movementKey: record.movementKey, from: modelContext)
+            .map(TrendSample.init(record:))
+
+        record.videoFileName = videoFileName
+        record.thumbnailFileName = thumbnailFileName
+        AnalysisLibrary.insert(record, into: modelContext)
+
+        techniqueLessons = TechniqueLibrary.lessons(for: record, history: history)
     }
 
     // MARK: - Share summary image

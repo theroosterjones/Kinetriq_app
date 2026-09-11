@@ -1,0 +1,301 @@
+import Foundation
+import SwiftData
+import os.log
+
+private let logger = Logger(subsystem: "com.kevinjones.Kinetriq", category: "SyncService")
+
+/// Uploads analysis **measurements** to Supabase so history survives a reinstall and
+/// can later be read by a coach.
+///
+/// Video never takes this path. Analyzed clips stay in the app container on the
+/// device; what leaves is joint angles, rep counts, tempo, scores, and grades. The
+/// backing tables have no video column by design — see the comment above
+/// `analysis_records` in `supabase/schema.sql`.
+///
+/// These are the app's first `rest/v1` calls. Everything before this spoke only to
+/// `auth/v1` and one Edge Function.
+@MainActor
+final class SyncService: ObservableObject {
+
+    static let shared = SyncService()
+
+    @Published private(set) var isSyncing = false
+    @Published private(set) var lastSyncedAt: Date?
+    @Published private(set) var lastErrorMessage: String?
+
+    /// User-facing opt-out. Defaults to on, but a coach handling client video may
+    /// reasonably want nothing at all leaving the device, and saying no should cost
+    /// them nothing but cross-device history.
+    private static let enabledKey = "kinetriq.sync.enabled"
+
+    var isEnabledByUser: Bool {
+        get {
+            UserDefaults.standard.object(forKey: Self.enabledKey) as? Bool ?? true
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: Self.enabledKey)
+            objectWillChange.send()
+        }
+    }
+
+    /// Sync requires a real backend session. When Supabase isn't configured the app
+    /// mints a local development session, and there is nothing to talk to.
+    var isAvailable: Bool {
+        AppEnvironment.isSupabaseConfigured && AuthService.shared.session != nil
+    }
+
+    private init() {}
+
+    // MARK: - Public entry points
+
+    /// Uploads everything not yet accepted by the backend. Safe to call often —
+    /// it no-ops when there is nothing pending, and upserts are idempotent.
+    func syncPending(context: ModelContext) async {
+        guard isEnabledByUser, isAvailable, !isSyncing else { return }
+
+        let pending = AnalysisLibrary.fetchUnsynced(from: context)
+        guard !pending.isEmpty else { return }
+
+        await upload(pending, context: context)
+    }
+
+    /// Re-uploads the whole library. Used by the manual "Sync now" action, which is
+    /// also the recovery path if a device was offline for a long stretch.
+    func syncAll(context: ModelContext) async {
+        guard isEnabledByUser, isAvailable, !isSyncing else { return }
+        await upload(AnalysisLibrary.fetchAll(from: context), context: context)
+    }
+
+    // MARK: - Upload
+
+    /// Upload in batches so one very large history doesn't become one very large
+    /// request that times out and retries forever.
+    private static let batchSize = 25
+
+    private func upload(_ records: [AnalysisRecord], context: ModelContext) async {
+        isSyncing = true
+        lastErrorMessage = nil
+        defer { isSyncing = false }
+
+        // The access token may have expired while the app was backgrounded; a 401
+        // here would otherwise look like a sync failure.
+        await AuthService.shared.refreshSessionIfNeeded()
+
+        guard let session = AuthService.shared.session else { return }
+        let token = session.accessToken
+        let userID = session.user.id
+
+        for batch in records.chunked(into: Self.batchSize) {
+            let recordPayloads = batch.map {
+                AnalysisRecordPayload(record: $0, userID: userID)
+            }
+            let repPayloads = batch.flatMap { record in
+                record.perRepMetrics.map {
+                    AnalysisRepPayload(record: record, rep: $0, userID: userID)
+                }
+            }
+
+            do {
+                try await postUpsert(path: "analysis_records", body: recordPayloads, token: token)
+                if !repPayloads.isEmpty {
+                    try await postUpsert(path: "analysis_reps", body: repPayloads, token: token)
+                }
+
+                let now = Date()
+                for record in batch { record.syncedAt = now }
+                try? context.save()
+                lastSyncedAt = now
+            } catch {
+                lastErrorMessage = Self.userFacingMessage(for: error)
+                logger.error("Sync batch failed: \(error.localizedDescription, privacy: .public)")
+                // Stop on the first failure rather than hammering a backend that is
+                // down or a token that is bad. The next foreground will try again.
+                return
+            }
+        }
+    }
+
+    private func postUpsert<Body: Encodable>(
+        path: String,
+        body: [Body],
+        token: String
+    ) async throws {
+        guard let baseURL = AppEnvironment.supabaseURL,
+              let anonKey = AppEnvironment.supabaseAnonKey else {
+            throw SyncError.notConfigured
+        }
+
+        var request = URLRequest(url: baseURL.appendingPathComponent("rest/v1/\(path)"))
+        request.httpMethod = "POST"
+        request.setValue(anonKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        // `merge-duplicates` makes this an upsert on the primary key, so a retried
+        // batch updates the existing rows instead of failing on a conflict.
+        request.setValue("resolution=merge-duplicates,return=minimal", forHTTPHeaderField: "Prefer")
+
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        request.httpBody = try encoder.encode(body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw SyncError.invalidResponse
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            let detail = (try? JSONDecoder().decode(PostgrestError.self, from: data))?.message
+            throw SyncError.requestFailed(status: http.statusCode, detail: detail)
+        }
+    }
+
+    // MARK: - Errors
+
+    enum SyncError: LocalizedError {
+        case notConfigured
+        case invalidResponse
+        case requestFailed(status: Int, detail: String?)
+
+        var errorDescription: String? {
+            switch self {
+            case .notConfigured:
+                return "Progress sync is not configured."
+            case .invalidResponse:
+                return "The server returned an unexpected response."
+            case .requestFailed(let status, let detail):
+                return detail ?? "The server rejected the upload (HTTP \(status))."
+            }
+        }
+    }
+
+    /// Plain-language message plus a screenshot-able code, matching the pattern
+    /// `AuthService` and `PurchaseService` already use.
+    static func userFacingMessage(for error: Error) -> String {
+        if let syncError = error as? SyncError {
+            switch syncError {
+            case .notConfigured:
+                return withReference("Progress sync isn't available right now.", "SYNC-CONFIG")
+            case .invalidResponse:
+                return withReference("The server returned an unexpected response.", "SYNC-RESP")
+            case .requestFailed(let status, _):
+                if status == 401 || status == 403 {
+                    return withReference("Your session expired. Sign out and back in to resume syncing.", "SYNC-\(status)")
+                }
+                return withReference("Your progress couldn't be saved to your account. It's still on this device and will retry automatically.", "SYNC-\(status)")
+            }
+        }
+        if let urlError = error as? URLError {
+            return withReference("You appear to be offline. Progress is saved on this device and will sync later.", "NET-\(urlError.errorCode)")
+        }
+        let nsError = error as NSError
+        return withReference("Your progress couldn't be saved to your account right now.", "\(nsError.domain)-\(nsError.code)")
+    }
+
+    private static func withReference(_ message: String, _ reference: String) -> String {
+        "\(message)\n\nError code: \(reference)"
+    }
+}
+
+// MARK: - Wire format
+
+private struct PostgrestError: Decodable {
+    let message: String?
+}
+
+/// Row shape for `analysis_records`. Snake-case keys match the SQL columns.
+struct AnalysisRecordPayload: Encodable {
+    let id: String
+    let user_id: String
+    let recorded_at: Date
+    let kind: String
+    let movement_key: String
+    let movement_name: String
+    let side: String
+    let plane: String?
+    let source: String
+    let duration_seconds: Double
+    let pose_detection_rate: Double
+    let total_reps: Int
+    let score: Int?
+    let mean_peak_angle_deg: Double?
+    let mean_eccentric_seconds: Double?
+    let mean_concentric_seconds: Double?
+    let grade: String?
+    let left_rom_deg: Double?
+    let right_rom_deg: Double?
+    let asymmetry_deg: Double?
+    let asymmetry_flag: Bool
+    let average_angles: [JointAngle]
+    let tempo_breakdown: [String: Double]
+    let sub_grades: [SubGrade]
+    let details: [String]
+    let insights: [String]
+    let app_version: String?
+
+    init(record: AnalysisRecord, userID: String) {
+        let payload = record.payload
+        self.id = record.recordID.uuidString
+        self.user_id = userID
+        self.recorded_at = record.date
+        self.kind = record.kindRaw
+        self.movement_key = record.movementKey
+        self.movement_name = record.movementName
+        self.side = record.sideRaw
+        self.plane = record.planeRaw
+        self.source = record.sourceRaw
+        self.duration_seconds = record.duration
+        self.pose_detection_rate = record.poseDetectionRate
+        self.total_reps = record.totalReps
+        self.score = record.finalScore
+        self.mean_peak_angle_deg = record.meanPeakAngle
+        self.mean_eccentric_seconds = record.meanEccentric
+        self.mean_concentric_seconds = record.meanConcentric
+        self.grade = record.gradeRaw
+        self.left_rom_deg = record.leftROM
+        self.right_rom_deg = record.rightROM
+        self.asymmetry_deg = record.asymmetryDeg
+        self.asymmetry_flag = record.asymmetryFlag
+        self.average_angles = payload.averageAngles
+        self.tempo_breakdown = payload.tempoBreakdown
+        self.sub_grades = payload.subGrades
+        self.details = payload.details
+        self.insights = payload.insights
+        self.app_version = Bundle.main
+            .object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+    }
+}
+
+/// Row shape for `analysis_reps`.
+struct AnalysisRepPayload: Encodable {
+    let record_id: String
+    let user_id: String
+    let rep_number: Int
+    let peak_flexion_angle_deg: Double?
+    let eccentric_seconds: Double
+    let pause_bottom_seconds: Double
+    let concentric_seconds: Double
+    let pause_top_seconds: Double
+
+    init(record: AnalysisRecord, rep: RepMetric, userID: String) {
+        self.record_id = record.recordID.uuidString
+        self.user_id = userID
+        self.rep_number = rep.repNumber
+        // `.greatestFiniteMagnitude` is the collector's "never measured" sentinel and
+        // is not valid JSON, so it must not reach the encoder.
+        self.peak_flexion_angle_deg = (rep.peakFlexionAngle.isFinite && rep.peakFlexionAngle < 1000)
+            ? Double(rep.peakFlexionAngle)
+            : nil
+        self.eccentric_seconds = rep.eccentricDuration.isFinite ? rep.eccentricDuration : 0
+        self.pause_bottom_seconds = rep.pauseBottomDuration.isFinite ? rep.pauseBottomDuration : 0
+        self.concentric_seconds = rep.concentricDuration.isFinite ? rep.concentricDuration : 0
+        self.pause_top_seconds = rep.pauseTopDuration.isFinite ? rep.pauseTopDuration : 0
+    }
+}
+
+extension Array {
+    func chunked(into size: Int) -> [[Element]] {
+        guard size > 0 else { return [self] }
+        return stride(from: 0, to: count, by: size).map {
+            Array(self[$0..<Swift.min($0 + size, count)])
+        }
+    }
+}

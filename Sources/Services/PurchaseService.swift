@@ -8,6 +8,7 @@ final class PurchaseService: ObservableObject {
     static let shared = PurchaseService()
 
     @Published private(set) var hasRevenueCatEntitlement = false
+    @Published private(set) var hasCoachEntitlement = false
     @Published private(set) var customerInfo: CustomerInfo?
     @Published private(set) var offerings: Offerings?
     @Published private(set) var isLoading = true
@@ -22,11 +23,62 @@ final class PurchaseService: ObservableObject {
     /// `pro` predates both. Keep Android's `proEntitlementIds` in step with this list.
     static let acceptedEntitlementIDs = ["Kinetriq Pro", "kinetriq_pro", "pro"]
 
+    /// Identifiers that unlock the **coach** tier: the client roster and invite codes.
+    ///
+    /// Deliberately a separate list. Adding a coach identifier to
+    /// `acceptedEntitlementIDs` would work today and become impossible to unpick
+    /// later, because that array is what every existing Pro subscriber is unlocked by.
+    static let acceptedCoachEntitlementIDs = ["Kinetriq Coach", "kinetriq_coach"]
+
     /// App Store product identifiers, as registered in App Store Connect. The `kevink`
     /// spelling and the missing `.pro` segment are both real — verified against live
     /// `CustomerInfo`, which reports `com.kevinkjones.kinetriq.monthly` / `.annual`.
     static let monthlyProductID = "com.kevinkjones.kinetriq.monthly"
     static let yearlyProductID = "com.kevinkjones.kinetriq.annual"
+
+    /// Coach tiers, priced by roster size.
+    ///
+    /// The coach pays for the seats, not the clients — that is how every coaching
+    /// platform with real adoption prices it, and asking a trainer to chase fifteen
+    /// clients for $5 each is how a coach tier dies. Client limits are enforced
+    /// server-side in `create_coach_invite`; `coaches.client_limit` is the source of
+    /// truth and is written by the RevenueCat webhook. The mapping below is only used
+    /// to label the paywall before a purchase exists.
+    ///
+    /// These must be created in App Store Connect under the same `kevink` spelling as
+    /// the products above before the coach tier can ship.
+    enum CoachTier: String, CaseIterable, Identifiable {
+        case starter
+        case pro
+        case studio
+
+        var id: String { rawValue }
+
+        var displayName: String {
+            switch self {
+            case .starter: return "Coach Starter"
+            case .pro:     return "Coach Pro"
+            case .studio:  return "Coach Studio"
+            }
+        }
+
+        var clientLimit: Int {
+            switch self {
+            case .starter: return 5
+            case .pro:     return 15
+            case .studio:  return 40
+            }
+        }
+
+        var monthlyProductID: String { "com.kevinkjones.kinetriq.coach.\(rawValue).monthly" }
+        var annualProductID: String { "com.kevinkjones.kinetriq.coach.\(rawValue).annual" }
+
+        static func matching(productID: String) -> CoachTier? {
+            allCases.first {
+                productID == $0.monthlyProductID || productID == $0.annualProductID
+            }
+        }
+    }
 
     private var isRevenueCatConfigured = false
 
@@ -61,12 +113,31 @@ final class PurchaseService: ObservableObject {
     var accessState: SubscriptionAccessState {
         SubscriptionAccessState(
             hasRevenueCatEntitlement: hasRevenueCatEntitlement,
+            hasCoachEntitlement: hasCoachEntitlement,
             developmentUnlocked: developmentUnlocked
         )
     }
 
     var hasProAccess: Bool {
         accessState.hasProAccess
+    }
+
+    var hasCoachAccess: Bool {
+        accessState.hasCoachAccess
+    }
+
+    /// Roster size the current coach subscription allows, inferred from the active
+    /// product. The authoritative limit lives in `coaches.client_limit` and is
+    /// enforced by Postgres; this only drives on-device labelling ("12 of 15").
+    var coachTier: CoachTier? {
+        guard hasCoachEntitlement, let info = customerInfo else { return nil }
+        for entitlementID in Self.acceptedCoachEntitlementIDs {
+            if let entitlement = info.entitlements[entitlementID], entitlement.isActive,
+               let tier = CoachTier.matching(productID: entitlement.productIdentifier) {
+                return tier
+            }
+        }
+        return nil
     }
 
     var isProUser: Bool {
@@ -85,6 +156,7 @@ final class PurchaseService: ObservableObject {
     func configure(initialAppUserID: String? = nil) {
         guard let apiKey = AppEnvironment.revenueCatAPIKey else {
             hasRevenueCatEntitlement = false
+            hasCoachEntitlement = false
             isLoading = false
             return
         }
@@ -129,6 +201,7 @@ final class PurchaseService: ObservableObject {
     func logOut() async {
         guard isRevenueCatConfigured else {
             hasRevenueCatEntitlement = false
+            hasCoachEntitlement = false
             return
         }
 
@@ -137,6 +210,7 @@ final class PurchaseService: ObservableObject {
             updateSubscriptionStatus(from: info)
         } catch {
             hasRevenueCatEntitlement = false
+            hasCoachEntitlement = false
         }
     }
 
@@ -225,6 +299,9 @@ final class PurchaseService: ObservableObject {
     func updateSubscriptionStatus(from info: CustomerInfo) {
         customerInfo = info
         hasRevenueCatEntitlement = Self.acceptedEntitlementIDs.contains { entitlementID in
+            info.entitlements[entitlementID]?.isActive == true
+        }
+        hasCoachEntitlement = Self.acceptedCoachEntitlementIDs.contains { entitlementID in
             info.entitlements[entitlementID]?.isActive == true
         }
     }

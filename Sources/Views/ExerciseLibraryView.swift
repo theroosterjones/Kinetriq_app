@@ -189,6 +189,7 @@ private struct ExerciseDetailSheet: View {
                         }
                     }
                     cuesCard
+                    measuredFaultsCard
                     Spacer(minLength: KSpacing.xl)
                 }
                 .padding(.horizontal, KSpacing.screenH)
@@ -223,6 +224,44 @@ private struct ExerciseDetailSheet: View {
                 }
             }
             Spacer(minLength: 0)
+        }
+    }
+
+    /// The faults Kinetriq can detect for this pattern, named but not expanded.
+    ///
+    /// Deliberately framed as "what gets checked" rather than as advice: the full
+    /// lesson only appears after a set produces the measurement behind it, so the
+    /// coaching is always about the user's own reps instead of a generic list.
+    @ViewBuilder
+    private var measuredFaultsCard: some View {
+        let family: MovementFamily = item.exerciseType.map(MovementFamily.init(exerciseType:)) ?? .assessment
+        let catalog = TechniqueLibrary.catalog(for: family)
+            .filter { $0.fault != .tooFewReps && $0.fault != .lowTracking }
+
+        if !catalog.isEmpty {
+            KCard {
+                VStack(alignment: .leading, spacing: KSpacing.sm) {
+                    Eyebrow(text: "What Kinetriq checks for")
+                    ForEach(catalog) { lesson in
+                        HStack(alignment: .top, spacing: KSpacing.sm) {
+                            Image(systemName: "scope")
+                                .font(.system(size: 14))
+                                .foregroundStyle(KColor.violet)
+                                .frame(width: 18)
+                                .padding(.top, 1)
+                            Text(lesson.title)
+                                .font(KFont.subheadline)
+                                .foregroundStyle(KColor.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    Text("Each of these turns into specific coaching only when your own set produces the measurement behind it.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(KColor.textTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 2)
+                }
+            }
         }
     }
 

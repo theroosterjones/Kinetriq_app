@@ -1,8 +1,11 @@
 import SwiftUI
+import SwiftData
 
 @main
 struct KinetriqApp: App {
     @Environment(\.scenePhase) private var scenePhase
+
+    private let modelContainer = AnalysisLibrary.makeContainer()
 
     init() {
         AuthService.shared.bootstrap()
@@ -16,11 +19,14 @@ struct KinetriqApp: App {
         WindowGroup {
             ContentView()
         }
+        .modelContainer(modelContainer)
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
             Task {
                 await AuthService.shared.refreshSessionIfNeeded()
                 await PurchaseService.shared.refreshStatus()
+                // Catches up anything saved while offline or before sign-in.
+                await SyncService.shared.syncPending(context: modelContainer.mainContext)
             }
         }
     }

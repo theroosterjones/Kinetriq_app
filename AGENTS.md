@@ -27,8 +27,10 @@ Use this file when picking up work on this repo. It summarizes architecture, con
 |------|---------|
 | `project.yml` | XcodeGen spec, versions, MediaPipe plist patch scripts, SPM `SwiftTasksVision` + RevenueCat |
 | `Sources/` | All app code + `pose_landmarker_full.task` (gitignored — see README for curl) |
+| `Sources/Persistence/` | SwiftData layer: `AnalysisRecord`, `AnalysisLibrary`, `AnalysisStorage` |
+| `supabase/schema.sql` | Postgres schema: subscriptions, metrics sync, coach tables + RPCs |
 | `Tests/` | Unit tests |
-| `docs/` | Technical notes (VideoOrientation, Troubleshooting) |
+| `docs/` | Technical notes (VideoOrientation, Troubleshooting, ContentLibrary, WebsiteCopy, SubscriptionExperiments) |
 | `AGENTS.md` | This file |
 
 ## App navigation structure
@@ -37,7 +39,7 @@ Use this file when picking up work on this repo. It summarizes architecture, con
 TabView (default: Home)
 ├── Home        (HomeView)          — branding + quick-action cards; logo TBD
 ├── Workout     (ExerciseView)      — saved-video & live analysis
-├── History     (WorkoutHistoryView)— "coming soon" placeholder
+├── Progress    (WorkoutHistoryView)— real history, trends, CSV export
 └── Settings    (SettingsView)
 ```
 
@@ -106,6 +108,25 @@ Related: a `private func` on a SwiftUI `View` is **not** main-actor isolated. Ca
 - **In-app promo-code redemption was removed for App Store compliance (Guideline 3.1.1).** Free months, discounts, and comp access must be granted through **Apple App Store offer codes** (redeemed via `SKPaymentQueue.presentCodeRedemptionSheet()` in-app, or via the App Store) — never through app code, a text field, or a backend call that flips entitlement client-side.
 - The Supabase `redeem-promo-code` Edge Function and `promo_codes` table remain in the repo for reference/history but are **not wired to in-app entitlement**. The former `PromoCodeView` and `PromoRedemptionService` were deleted; `SubscriptionAccessState` no longer has a `backendEntitlement` field.
 - Setup references: `docs/Subscriptions.md` and `docs/WebBackend.md`.
+
+### Persistence, sync, and coaching (new in 3.6.0)
+
+**SwiftData is the system of record.** Every finished analysis — saved-video *and* live — becomes one `AnalysisRecord` (`Sources/Persistence/`). One table with a `kind` discriminator covers exercises and assessments so Progress, CSV export, and sync each read a single timeline.
+
+- The model's primary key is **`recordID`**, not `id`. `PersistentModel` already supplies `id` for SwiftUI identity, and shadowing it breaks `Identifiable`.
+- Media lives in **Application Support/Kinetriq/Media** via `AnalysisStorage`, never `temporaryDirectory` — iOS purges temp and would orphan every video.
+- Insert through **`AnalysisLibrary.insert(_:into:)`**, which saves and then kicks off a sync. Do not call `context.insert` directly.
+- `AnalysisPayload` holds the non-queryable parts (per-rep metrics, sub-grades, insights) as JSON and doubles as the sync wire format. Insights are stored **at analysis time** and replayed later, never regenerated — regenerating would silently rewrite history when a threshold changes.
+
+**Metrics sync; video never does (do not regress).** `SyncService` uploads `analysis_records` / `analysis_reps` to PostgREST with the user's JWT. There is no video upload path anywhere, no storage bucket, and the privacy copy in `HelpView` and `ConnectCoachView` states this as a promise. Adding video upload is a product decision with legal weight, not a feature.
+
+**Coach tier.** `coach_roster()` and friends are SECURITY DEFINER RPCs in `supabase/schema.sql`; `CoachService` calls them. A coach reads a linked client's *measurements* only, and only while `coach_clients.status = 'active'`. Coach tooling is gated on **`hasCoachEntitlement`** and is deliberately **not** opened by the DEBUG `developmentUnlocked` path.
+
+**Cross-session coaching.** `TrendInsights` (history) is separate from `CoachingInsights` (one set). Thresholds are blunt first-vs-last comparisons, not fitted slopes — with five to ten sessions a regression line would imply precision the data does not have.
+
+**Technique content is fault-triggered.** `TechniqueLibrary` only shows a lesson when the user's own set produced the measurement behind it (`TechniqueFaultDetector`). `rangeBelowPersonalBest` compares against the user's own deepest recorded angle, never a population norm — Kinetriq has no population data. Illustration assets are **not** vendored; see **[docs/ContentLibrary.md](docs/ContentLibrary.md)** for the unresolved CC BY-SA share-alike question.
+
+**CSV escaping.** `CSVExporter.escape` scans `unicodeScalars`, not `Characters`. Swift treats CRLF as a single grapheme cluster equal to neither `\r` nor `\n`, so a Character-wise check lets a Windows line break through unquoted and splits the row.
 
 ### Rep counting conventions
 
@@ -180,16 +201,33 @@ scripts/release.sh --no-upload  # archive + export only
 - Skipping `resetForNewSession()` before a saved-video analysis run.
 - Decoding Supabase auth JSON with Foundation `.iso8601` (fractional `created_at` → NSCocoaErrorDomain 4864).
 - Calling `refreshStatus(showsLoadingGate: true)` from the paywall or from foregrounding (infinite loading ↔ paywall flash).
+- Adding any video-upload path. Metrics sync; video stays on device. The app tells users this in writing.
+- Renaming `AnalysisRecord.recordID` to `id` (collides with `PersistentModel`).
+- Writing analysis media to `temporaryDirectory` instead of `AnalysisStorage`.
 
 ## Open to-do (v1.x)
 
 - [ ] Kinetriq logo asset → replace `HomeView` SF Symbol placeholder
-- [ ] Full workout history persistence (Core Data or SwiftData)
 - [ ] App Store submission (privacy policy, screenshots, metadata)
 - [ ] Additional exercises
 - [ ] Export analysis summary
+- [ ] Resolve the CC BY-SA illustration question in `docs/ContentLibrary.md`, then drop in assets
+- [ ] Create the coach subscription products in App Store Connect (`com.kevinkjones.kinetriq.coach.*`) — `CoachRosterView` shows a "not yet available" banner until they exist
+- [ ] Run the 14-day trial test in `docs/SubscriptionExperiments.md`
+- [ ] Web dashboard for coaches (the Postgres side is already transport-agnostic)
 
-Last updated: **Kinetriq 3.5.6** build **51**. Changes vs 3.5.5/50:
+Last updated: **Kinetriq 3.6.0** (unreleased — bump `project.yml` before shipping). Changes vs 3.5.6/51:
+1. **Analyses are saved.** New SwiftData layer (`AnalysisRecord`, `AnalysisLibrary`, `AnalysisStorage`) persists every exercise and assessment from both pipelines. Previously every measurement was discarded into `@State` the moment the view went away — the analysis engine was mature and nothing it produced survived. Video and thumbnails move from `temporaryDirectory` into Application Support so they stop disappearing.
+2. **Progress tab is real.** `WorkoutHistoryView` replaces the "coming soon" placeholder: filterable session list, score and depth trends, 14-day activity, storage readout, per-session detail with playback, and delete.
+3. **Cross-session coaching.** New `TrendInsights` compares a movement's history — score direction, personal bests, depth drift, eccentric control, asymmetry, and layoffs — and needs three sessions before it says anything.
+4. **Live analysis produces a summary.** The live pipeline now accumulates session state under an `NSLock` shared with the capture queue and builds an `AnalysisSummary` on Stop, presented in `LiveSessionSummarySheet`. Before this, a live set produced no record at all.
+5. **Metrics sync.** `SyncService` uploads measurements to new `analysis_records` / `analysis_reps` tables with full RLS. **Video never leaves the device**; `HelpView` now says so precisely.
+6. **CSV export.** Sessions and per-rep rows, RFC 4180 escaped with a UTF-8 BOM for Excel. Fixed a latent bug where a value containing CRLF went out unquoted, because Swift treats `\r\n` as one Character.
+7. **Coach tier.** `coaches` / `coach_invites` / `coach_clients` plus `create_coach_invite`, `redeem_coach_invite`, and `coach_roster` RPCs; `CoachRosterView` orders clients by triage (never started → quiet → slipping → asymmetry) rather than as a feed of clips. Gated on a new `Kinetriq Coach` entitlement that the DEBUG unlock deliberately does not open. Products are not yet created in App Store Connect.
+8. **Fault-triggered technique content.** `TechniqueLibrary` surfaces at most two lessons after a set, each triggered by a measurement rather than by the exercise name. Illustration assets deferred pending the CC BY-SA question in `docs/ContentLibrary.md`.
+9. **Website copy** rewritten in `docs/WebsiteCopy.md` (paste-ready; the Squarespace site is not in this repo).
+
+History: **3.5.6** build **51**. Changes vs 3.5.5/50:
 1. **Live analysis: blank screen instead of the share sheet after Stop** — `LiveAnalysisView.toggleRecording()` was a nonisolated `private func` invoked as `Task { await … }`, so its `@State` writes ran off the main actor; combined with `.sheet(isPresented:)` reading `savedVideoURL` separately inside the closure, the sheet presented before the URL landed and rendered an empty `if let` — a blank white sheet with no way to save the recording. Now `@MainActor` plus `.sheet(item: $sharePayload)`, so the sheet cannot present without its URL. A failed `stopRecording()` also surfaces an alert instead of silently discarding the take.
 2. **Lunge dropped reps** — `LungeAnalyzer` extended gate lowered **155° → 145°**. The front knee in a split stance never locks out; a measured real rep peaked at 154°, so the counter stayed in `.flexed` and discarded reps. Covered by `LungeAnalyzerTests`.
 

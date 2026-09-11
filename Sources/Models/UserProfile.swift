@@ -28,6 +28,11 @@ struct AuthSession: Codable, Equatable {
 
 struct SubscriptionAccessState: Equatable {
     var hasRevenueCatEntitlement: Bool
+    /// A separate RevenueCat entitlement for the coach tier. Coaches analyze their
+    /// own movement too, so it implies Pro — but it is a distinct entitlement, not a
+    /// value added to `acceptedEntitlementIDs`, which every existing subscriber
+    /// depends on and must not change.
+    var hasCoachEntitlement: Bool = false
     /// Local convenience unlock for development builds only. It is intentionally
     /// ignored in Release so that Pro access is granted solely through Apple
     /// In-App Purchase (RevenueCat) in shipping builds.
@@ -35,9 +40,16 @@ struct SubscriptionAccessState: Equatable {
 
     var hasProAccess: Bool {
         #if DEBUG
-        return hasRevenueCatEntitlement || developmentUnlocked
+        return hasRevenueCatEntitlement || hasCoachEntitlement || developmentUnlocked
         #else
-        return hasRevenueCatEntitlement
+        return hasRevenueCatEntitlement || hasCoachEntitlement
         #endif
+    }
+
+    /// Coach tooling is never opened by the development unlock: the roster talks to
+    /// real Supabase tables holding real clients' data, so a debug build must not be
+    /// able to walk into it.
+    var hasCoachAccess: Bool {
+        hasCoachEntitlement
     }
 }
