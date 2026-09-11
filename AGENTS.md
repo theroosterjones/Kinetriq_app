@@ -211,9 +211,12 @@ scripts/release.sh --no-upload  # archive + export only
 - [ ] App Store submission (privacy policy, screenshots, metadata)
 - [ ] Additional exercises
 - [ ] Export analysis summary
-- [ ] Resolve the CC BY-SA illustration question in `docs/ContentLibrary.md`, then drop in assets
-- [ ] Create the coach subscription products in App Store Connect (`com.kevinkjones.kinetriq.coach.*`) — `CoachRosterView` shows a "not yet available" banner until they exist
+- [x] ~~CC BY-SA illustrations~~ — **decided: technique lessons ship as text.** Share-alike would cover any recolour/crop/overlay. `illustrationAsset` plumbing stays for commissioned or licensed art later. See `docs/ContentLibrary.md`.
+- [ ] Commission original technique illustrations, or render diagrams from stored pose data (the option no competitor can copy)
+- [ ] Create the coach subscription products in App Store Connect (`com.kevinkjones.kinetriq.coach.*`) — full runbook in `docs/CoachSubscriptionSetup.md`; `CoachRosterView` shows a "not yet available" banner until they exist
+- [ ] Apply `supabase/schema.sql` and redeploy `revenuecat-webhook` — `docs/SupabaseDeploy.md`
 - [ ] Run the 14-day trial test in `docs/SubscriptionExperiments.md`
+- [ ] Restore synced history on reinstall (sync is push-only today, so a reinstall shows an empty Progress tab)
 - [ ] Web dashboard for coaches (the Postgres side is already transport-agnostic)
 
 Last updated: **Kinetriq 3.6.0** (unreleased — bump `project.yml` before shipping). Changes vs 3.5.6/51:
@@ -226,6 +229,9 @@ Last updated: **Kinetriq 3.6.0** (unreleased — bump `project.yml` before shipp
 7. **Coach tier.** `coaches` / `coach_invites` / `coach_clients` plus `create_coach_invite`, `redeem_coach_invite`, and `coach_roster` RPCs; `CoachRosterView` orders clients by triage (never started → quiet → slipping → asymmetry) rather than as a feed of clips. Gated on a new `Kinetriq Coach` entitlement that the DEBUG unlock deliberately does not open. Products are not yet created in App Store Connect.
 8. **Fault-triggered technique content.** `TechniqueLibrary` surfaces at most two lessons after a set, each triggered by a measurement rather than by the exercise name. Illustration assets deferred pending the CC BY-SA question in `docs/ContentLibrary.md`.
 9. **Website copy** rewritten in `docs/WebsiteCopy.md` (paste-ready; the Squarespace site is not in this repo).
+10. **RevenueCat webhook handles the coach tier.** It previously mirrored only `kinetriq_pro` and never wrote `coaches.client_limit`, so every coach would have landed on the column default of 15 regardless of tier — a Studio subscriber capped at 15, a Starter subscriber given 15. It now mirrors `Kinetriq Coach` as its own `subscriptions` row and writes the tier's roster cap. A lapse sets `client_limit = 0` rather than deleting the `coaches` row, because `coach_invites` and `coach_clients` cascade from it and a missed payment must not destroy a roster. Product-ID mapping pinned by `supabase/functions/_shared/utils.test.ts`.
+
+**Deploying 3.6.0 needs two out-of-repo steps** — apply `supabase/schema.sql` and redeploy `revenuecat-webhook` (`docs/SupabaseDeploy.md`). The coach tier additionally needs six products created in App Store Connect (`docs/CoachSubscriptionSetup.md`).
 
 History: **3.5.6** build **51**. Changes vs 3.5.5/50:
 1. **Live analysis: blank screen instead of the share sheet after Stop** — `LiveAnalysisView.toggleRecording()` was a nonisolated `private func` invoked as `Task { await … }`, so its `@State` writes ran off the main actor; combined with `.sheet(isPresented:)` reading `savedVideoURL` separately inside the closure, the sheet presented before the URL landed and rendered an empty `if let` — a blank white sheet with no way to save the recording. Now `@MainActor` plus `.sheet(item: $sharePayload)`, so the sheet cannot present without its URL. A failed `stopRecording()` also surfaces an alert instead of silently discarding the take.

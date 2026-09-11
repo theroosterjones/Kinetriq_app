@@ -38,32 +38,85 @@ lesson stays behind the measurement.
 `TechniqueLibrary.maximumLessons` is **2**. Three corrections is already more than
 anyone acts on after a set.
 
-## The illustration question — decide before adding assets
+## Decision: text-only for now
 
-`TechniqueLesson` carries `illustrationAsset` and `attribution`, and
-`TechniqueLessonCard` renders the image when the asset exists in the bundle. Both are
-currently `nil` everywhere. That is deliberate.
+**Kinetriq ships technique lessons as text and cues, with no illustrations.** Taken
+2026-09-11. The plumbing (`illustrationAsset`, `attribution`, and the image branch in
+`TechniqueLessonCard`) stays in place so adding art later is a content change rather
+than an engineering one, but nothing is vendored today.
 
-The intended source is the **Everkinetic** anatomical illustration set, which is
-licensed **CC BY-SA 4.0**. Share-alike is not a formality and it is not a decision to
-make silently inside a code change:
+This costs less than it sounds like. The lessons are triggered by a measurement from
+the user's own set and describe what they specifically did, and that specificity is
+what makes them worth reading — a generic anatomical drawing adds polish, not
+understanding. Shipping text is not a placeholder for a real feature; it is the
+feature, slightly plainer.
 
-- **Attribution is mandatory and must be visible**, not buried in a settings screen.
-  Credit the source and name the license.
-- **Share-alike applies to derivative works of the images.** Recolouring an
-  illustration to match the Kinetriq palette, cropping it into a composite, or
-  tracing it produces a derivative that must itself be released under CC BY-SA 4.0.
-- **Unmodified display alongside your own content is generally mere aggregation**,
-  which does not force the surrounding app under the license — but "generally" is
-  doing real work in that sentence, and the answer depends on how the images are
-  combined with app UI.
-- A paid app can use CC BY-SA material; the license restricts licensing terms, not
-  commerce. Selling the *illustrations* is a different question from selling an app
-  that displays them.
+## Why CC BY-SA 4.0 is the blocker
 
-**Get an actual answer on this before shipping any asset**, ideally from someone who
-does licensing for a living. The plumbing is in place so that when the answer is yes,
-it is a content change and not an engineering one.
+The obvious source is the **Everkinetic** exercise illustration set, which is
+**CC BY-SA 4.0**. The problem is not attribution, which is easy. It is **share-alike**.
+
+Creative Commons licenses with `SA` require that if you distribute an *adapted*
+version of the work, you license your adaptation under the same terms. Three things
+follow, in increasing order of how much they matter:
+
+1. **Attribution must be visible and specific.** Not a line buried in Settings.
+   Author, license name, a link to the license, and an indication of whether you
+   modified the work. Annoying but solvable.
+
+2. **Almost anything you would want to do to the art is an adaptation.** Recolouring
+   to match the Kinetriq palette, cropping to a square, overlaying your own angle
+   markers, compositing two images into a before/after, or tracing to redraw are all
+   derivative works. Each one would have to be released under CC BY-SA 4.0 — meaning
+   your competitor can take your version and use it. Shipping the images *pixel for
+   pixel unmodified* avoids this, but pixel-for-pixel unmodified art in a designed app
+   tends to look exactly like what it is.
+
+3. **The uncertain part is the boundary.** Displaying an unmodified image next to your
+   own text is normally "mere aggregation" — a collection, not an adaptation — and does
+   not pull the app under the license. That is the standard reading, and it is probably
+   right. But "probably" is doing real work in that sentence, and the failure mode is
+   an argument about whether your app UI is a derivative work, which is not an argument
+   worth having over decorative art. Note that CC explicitly discourages using their
+   licenses for software, and offers no guidance on the app-bundling case.
+
+To be clear about what is *not* the problem: **commercial use is fine.** CC BY-SA
+permits it. A paid app can display CC BY-SA images. Selling the illustrations
+themselves would be a different question; bundling them in an app you charge for is
+not prohibited.
+
+## What would actually unblock images
+
+In rough order of how much I would recommend them:
+
+**Commission original art.** A set covering the seven faults across nine movement
+families is not a large illustration job, and the fault list is short and stable. You
+own the result outright, it matches the app's visual language, and the licensing
+question disappears permanently. This is the option I would take.
+
+**Buy a properly licensed stock set.** Several medical-illustration libraries sell
+royalty-free anatomical and exercise art with a commercial license that permits
+modification. Costs money once, no share-alike, no attribution UI to build.
+
+**Generate diagrams from your own pose data.** You already have MediaPipe landmarks
+for every rep. A stick-figure or skeleton diagram rendered from a real recorded rep —
+the user's own, or a reference take — would be original work, uniquely yours, and more
+honest than a generic drawing because it would show *their* movement. More engineering
+than the other options, but it is the one no competitor can copy, and it fits how the
+rest of the product works.
+
+**Use Everkinetic unmodified, with visible attribution.** Viable if you accept the
+constraints: no recolouring, no cropping, no overlays, no compositing, and an
+attribution line in the lesson card plus a credits screen. Cheapest and fastest. If
+you go this way, get a lawyer's sign-off on the aggregation reading first, and
+document it here so the next person does not relitigate it.
+
+**Ask a licensing attorney about the aggregation boundary.** Worth an hour of someone's
+time if any of the above is going to hinge on it. The specific question: does bundling
+unmodified CC BY-SA images in a proprietary iOS app, displayed alongside original text,
+constitute a collection rather than an adaptation?
+
+Until one of those lands, leave `illustrationAsset` nil. The lessons work without it.
 
 ## Adding illustrations once that is settled
 

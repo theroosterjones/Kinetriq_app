@@ -189,12 +189,12 @@ struct TechniqueLesson: Identifiable, Equatable {
 
     /// Name of a bundled illustration asset, when one exists for this lesson.
     ///
-    /// Currently always `nil`: the intended source is the Everkinetic anatomical
-    /// illustration set, which is CC BY-SA 4.0. Share-alike is a real decision for a
-    /// paid app and not one to make silently in a code change, so the plumbing and
-    /// the attribution field are here and the assets are not. See
-    /// `docs/ContentLibrary.md` for the drop-in procedure and the licensing question
-    /// that has to be answered first.
+    /// Always `nil` today: **Kinetriq ships these lessons as text.** The obvious
+    /// source, Everkinetic, is CC BY-SA 4.0, and share-alike would cover any
+    /// recolouring, cropping, or overlay — so the art could only ship pixel-for-pixel
+    /// unmodified. The plumbing and the attribution field stay so that commissioned
+    /// or properly licensed art is a content change rather than an engineering one.
+    /// Rationale and the routes that would unblock images: `docs/ContentLibrary.md`.
     let illustrationAsset: String?
     let attribution: String?
 
