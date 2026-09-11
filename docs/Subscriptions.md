@@ -19,6 +19,12 @@ hasProAccess = active RevenueCat entitlement OR developmentUnlocked
 
 ## Product setup
 
+> **Stale identifiers below.** This section predates the bundle-ID migration. The
+> products and entitlement that actually ship are `com.kevinkjones.kinetriq.monthly`,
+> `com.kevinkjones.kinetriq.annual`, and the entitlement `Kinetriq Pro` (with a
+> space) — see AGENTS.md, verified against live `CustomerInfo`. For the coach tier
+> see **[CoachSubscriptionSetup.md](CoachSubscriptionSetup.md)**.
+
 Use one paid tier for launch:
 
 | Item | Value |
