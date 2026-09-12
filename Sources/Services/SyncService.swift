@@ -23,6 +23,10 @@ final class SyncService: ObservableObject {
     @Published private(set) var lastSyncedAt: Date?
     @Published private(set) var lastErrorMessage: String?
 
+    /// Sessions pulled down by the most recent restore, so Settings can confirm that
+    /// something actually came back rather than leaving the user guessing.
+    @Published private(set) var lastRestoredCount = 0
+
     /// User-facing opt-out. Defaults to on, but a coach handling client video may
     /// reasonably want nothing at all leaving the device, and saying no should cost
     /// them nothing but cross-device history.
@@ -64,6 +68,149 @@ final class SyncService: ObservableObject {
     func syncAll(context: ModelContext) async {
         guard isEnabledByUser, isAvailable, !isSyncing else { return }
         await upload(AnalysisLibrary.fetchAll(from: context), context: context)
+        // A failed upload almost always means a rejected token or an unreachable
+        // backend, so pulling immediately after would fail the same way and replace
+        // the message the user needs to see.
+        guard lastErrorMessage == nil else { return }
+        await restore(context: context)
+    }
+
+    // MARK: - Restore
+
+    /// Set once a restore has completed for a given user, so a genuinely empty
+    /// history isn't re-fetched on every launch.
+    private static func restoreKey(for userID: String) -> String {
+        "kinetriq.sync.restored.\(userID)"
+    }
+
+    /// Pulls down measurements this device does not have.
+    ///
+    /// Without this, sync was write-only: a user who reinstalled — or signed in on a
+    /// second device — saw an empty Progress tab while every row sat in Postgres. To
+    /// someone who just paid, that reads as data loss.
+    ///
+    /// **Video does not come back**, because it never went up. Restored sessions carry
+    /// their measurements and no clip, and the UI says so rather than presenting a
+    /// broken player.
+    func restoreIfNeeded(context: ModelContext) async {
+        guard isEnabledByUser, isAvailable, !isSyncing,
+              let userID = AuthService.shared.session?.user.id else { return }
+
+        let alreadyRestored = UserDefaults.standard.bool(forKey: Self.restoreKey(for: userID))
+        // A fresh install has an empty store, which is the case worth catching. Once a
+        // restore has run, only an explicit "Sync now" pulls again.
+        guard !alreadyRestored || AnalysisLibrary.isEmpty(in: context) else { return }
+
+        await restore(context: context)
+    }
+
+    /// Page size for the download. Each row carries its reps embedded, so these are
+    /// larger than the upload batches.
+    private static let restorePageSize = 100
+
+    /// Hard stop on paging. Nobody has 5,000 analyzed sets, so hitting this means the
+    /// server is ignoring `offset` and the loop would otherwise never end.
+    private static let restoreMaxPages = 50
+
+    private func restore(context: ModelContext) async {
+        isSyncing = true
+        lastErrorMessage = nil
+        defer { isSyncing = false }
+
+        await AuthService.shared.refreshSessionIfNeeded()
+        guard let session = AuthService.shared.session else { return }
+
+        var existingIDs = Set(AnalysisLibrary.fetchAll(from: context).map(\.recordID))
+        var offset = 0
+        var restoredCount = 0
+
+        for _ in 0..<Self.restoreMaxPages {
+            let page: [RemoteAnalysisRecord]
+            do {
+                page = try await fetchPage(
+                    offset: offset,
+                    token: session.accessToken,
+                    userID: session.user.id
+                )
+            } catch {
+                lastErrorMessage = Self.userFacingMessage(for: error)
+                logger.error("Restore failed: \(error.localizedDescription, privacy: .public)")
+                return
+            }
+
+            for remote in page {
+                guard let remoteID = remote.recordID,
+                      !existingIDs.contains(remoteID),
+                      let record = remote.makeRecord() else { continue }
+                // Already on the server by definition, so don't queue it for upload.
+                record.syncedAt = Date()
+                context.insert(record)
+                existingIDs.insert(remoteID)
+                restoredCount += 1
+            }
+
+            if page.count < Self.restorePageSize { break }
+            offset += Self.restorePageSize
+        }
+
+        do {
+            try context.save()
+            UserDefaults.standard.set(true, forKey: Self.restoreKey(for: session.user.id))
+            lastSyncedAt = Date()
+            lastRestoredCount = restoredCount
+            if restoredCount > 0 {
+                logger.info("Restored \(restoredCount, privacy: .public) sessions from the account")
+            }
+        } catch {
+            lastErrorMessage = Self.userFacingMessage(for: error)
+        }
+    }
+
+    /// Fetches one page of records with their reps embedded, so a session and its
+    /// per-rep detail arrive together rather than in N+1 requests.
+    private func fetchPage(
+        offset: Int,
+        token: String,
+        userID: String
+    ) async throws -> [RemoteAnalysisRecord] {
+        guard let baseURL = AppEnvironment.supabaseURL,
+              let anonKey = AppEnvironment.supabaseAnonKey else {
+            throw SyncError.notConfigured
+        }
+
+        var components = URLComponents(
+            url: baseURL.appendingPathComponent("rest/v1/analysis_records"),
+            resolvingAgainstBaseURL: false
+        )
+        components?.queryItems = [
+            URLQueryItem(name: "select", value: "*,analysis_reps(*)"),
+            // Redundant with RLS, but an explicit filter means a policy change can
+            // never quietly widen what this device pulls down.
+            URLQueryItem(name: "user_id", value: "eq.\(userID)"),
+            URLQueryItem(name: "order", value: "recorded_at.desc"),
+            URLQueryItem(name: "limit", value: "\(Self.restorePageSize)"),
+            URLQueryItem(name: "offset", value: "\(offset)")
+        ]
+
+        guard let url = components?.url else { throw SyncError.notConfigured }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue(anonKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw SyncError.invalidResponse }
+        guard (200..<300).contains(http.statusCode) else {
+            let detail = (try? JSONDecoder().decode(PostgrestError.self, from: data))?.message
+            throw SyncError.requestFailed(status: http.statusCode, detail: detail)
+        }
+
+        let decoder = JSONDecoder()
+        // Postgres timestamps carry microseconds. Foundation's `.iso8601` rejects
+        // fractional seconds — the same trap that broke Sign in with Apple in 3.5.3.
+        decoder.dateDecodingStrategy = ISO8601Timestamp.decodingStrategy
+        return try decoder.decode([RemoteAnalysisRecord].self, from: data)
     }
 
     // MARK: - Upload
@@ -261,6 +408,111 @@ struct AnalysisRecordPayload: Encodable {
         self.insights = payload.insights
         self.app_version = Bundle.main
             .object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+    }
+}
+
+/// A record as it comes back from PostgREST, with its reps embedded.
+///
+/// Deliberately separate from `AnalysisRecordPayload` rather than making that type
+/// `Codable`. The upload side is lossless because the device has everything; the
+/// download side has to cope with rows written by an older or newer build, so every
+/// field here is optional and defaulted. One type doing both jobs would quietly make
+/// the upload side lenient too.
+struct RemoteAnalysisRecord: Decodable {
+    let id: String
+    let recorded_at: Date
+    let kind: String?
+    let movement_key: String?
+    let movement_name: String?
+    let side: String?
+    let plane: String?
+    let source: String?
+    let duration_seconds: Double?
+    let pose_detection_rate: Double?
+    let total_reps: Int?
+    let score: Int?
+    let mean_peak_angle_deg: Double?
+    let mean_eccentric_seconds: Double?
+    let mean_concentric_seconds: Double?
+    let grade: String?
+    let left_rom_deg: Double?
+    let right_rom_deg: Double?
+    let asymmetry_deg: Double?
+    let asymmetry_flag: Bool?
+    let average_angles: [JointAngle]?
+    let tempo_breakdown: [String: Double]?
+    let sub_grades: [SubGrade]?
+    let details: [String]?
+    let insights: [String]?
+    let analysis_reps: [RemoteAnalysisRep]?
+
+    var recordID: UUID? { UUID(uuidString: id) }
+
+    /// Rebuilds the local model. Returns nil only when the row is unusable — a bad
+    /// UUID or a missing movement key — because a partial record in the Progress tab
+    /// is worse than an absent one.
+    func makeRecord() -> AnalysisRecord? {
+        guard let recordID,
+              let movementKey = movement_key,
+              !movementKey.isEmpty else { return nil }
+
+        var payload = AnalysisPayload()
+        payload.averageAngles = average_angles ?? []
+        payload.tempoBreakdown = tempo_breakdown ?? [:]
+        payload.subGrades = sub_grades ?? []
+        payload.details = details ?? []
+        payload.insights = insights ?? []
+        payload.perRepMetrics = (analysis_reps ?? [])
+            .sorted { $0.rep_number < $1.rep_number }
+            .map(\.metric)
+
+        return AnalysisRecord(
+            recordID: recordID,
+            date: recorded_at,
+            kind: kind.flatMap(AnalysisKind.init(rawValue:)) ?? .exercise,
+            movementKey: movementKey,
+            movementName: movement_name ?? movementKey,
+            side: side.flatMap(BodySide.init(rawValue:)) ?? .left,
+            plane: plane.flatMap(ViewPlane.init(rawValue:)),
+            source: source.flatMap(AnalysisSource.init(rawValue:)) ?? .savedVideo,
+            duration: duration_seconds ?? 0,
+            poseDetectionRate: pose_detection_rate ?? 0,
+            totalReps: total_reps ?? 0,
+            finalScore: score,
+            meanPeakAngle: mean_peak_angle_deg,
+            meanEccentric: mean_eccentric_seconds,
+            meanConcentric: mean_concentric_seconds,
+            grade: grade.flatMap(LetterGrade.init(rawValue:)),
+            leftROM: left_rom_deg,
+            rightROM: right_rom_deg,
+            asymmetryDeg: asymmetry_deg,
+            asymmetryFlag: asymmetry_flag ?? false,
+            payload: payload
+            // videoFileName and thumbnailFileName stay nil: video never synced, so
+            // there is nothing on this device to point at.
+        )
+    }
+}
+
+struct RemoteAnalysisRep: Decodable {
+    let rep_number: Int
+    let peak_flexion_angle_deg: Double?
+    let eccentric_seconds: Double?
+    let pause_bottom_seconds: Double?
+    let concentric_seconds: Double?
+    let pause_top_seconds: Double?
+
+    var metric: RepMetric {
+        RepMetric(
+            repNumber: rep_number,
+            // Restores the collector's "never measured" sentinel that upload nils out,
+            // so downstream code keeps treating it as absent rather than as 0°.
+            peakFlexionAngle: peak_flexion_angle_deg.map(Float.init) ?? .greatestFiniteMagnitude,
+            eccentricDuration: eccentric_seconds ?? 0,
+            pauseBottomDuration: pause_bottom_seconds ?? 0,
+            concentricDuration: concentric_seconds ?? 0,
+            pauseTopDuration: pause_top_seconds ?? 0
+        )
     }
 }
 

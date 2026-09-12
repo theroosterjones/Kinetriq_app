@@ -25,6 +25,11 @@ struct KinetriqApp: App {
             Task {
                 await AuthService.shared.refreshSessionIfNeeded()
                 await PurchaseService.shared.refreshStatus()
+                // Pull first, then push. A fresh install has nothing to send and
+                // everything to receive, and doing it in this order means the
+                // Progress tab fills in rather than staying empty behind a push
+                // that has no work to do.
+                await SyncService.shared.restoreIfNeeded(context: modelContainer.mainContext)
                 // Catches up anything saved while offline or before sign-in.
                 await SyncService.shared.syncPending(context: modelContainer.mainContext)
             }

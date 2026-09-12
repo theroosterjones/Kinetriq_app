@@ -116,10 +116,17 @@ Related: a `private func` on a SwiftUI `View` is **not** main-actor isolated. Ca
 
 - The model's primary key is **`recordID`**, not `id`. `PersistentModel` already supplies `id` for SwiftUI identity, and shadowing it breaks `Identifiable`.
 - Media lives in **Application Support/Kinetriq/Media** via `AnalysisStorage`, never `temporaryDirectory` — iOS purges temp and would orphan every video.
-- Insert through **`AnalysisLibrary.insert(_:into:)`**, which saves and then kicks off a sync. Do not call `context.insert` directly.
+- Insert through **`AnalysisLibrary.insert(_:into:)`**, which saves and then kicks off a sync. Do not call `context.insert` directly. The one exception is `SyncService.restore`, which inserts in bulk and stamps `syncedAt` itself precisely because those rows must not be pushed back.
 - `AnalysisPayload` holds the non-queryable parts (per-rep metrics, sub-grades, insights) as JSON and doubles as the sync wire format. Insights are stored **at analysis time** and replayed later, never regenerated — regenerating would silently rewrite history when a threshold changes.
 
 **Metrics sync; video never does (do not regress).** `SyncService` uploads `analysis_records` / `analysis_reps` to PostgREST with the user's JWT. There is no video upload path anywhere, no storage bucket, and the privacy copy in `HelpView` and `ConnectCoachView` states this as a promise. Adding video upload is a product decision with legal weight, not a feature.
+
+**Restore pulls measurements back, and only measurements.** `SyncService.restoreIfNeeded(context:)` runs on launch and foreground **before** `syncPending` — a fresh install has everything to receive and nothing to send. It pages `GET rest/v1/analysis_records?select=*,analysis_reps(*)`, dedupes on `recordID`, and stamps `syncedAt` so restored rows are never re-uploaded.
+
+- It runs once per user (`kinetriq.sync.restored.<uuid>` in `UserDefaults`) **or** whenever the local store is empty, so a second reinstall still recovers.
+- Decode with **`ISO8601Timestamp.decodingStrategy`**. Postgres `timestamptz` carries microseconds and Foundation's `.iso8601` rejects them — the same trap as the auth JSON above.
+- `RemoteAnalysisRecord` is deliberately **separate from** `AnalysisRecordPayload` with every field optional. The upload side can assume a well-formed device model; the download side has to survive rows written by another build. Making one type do both jobs would make the upload side lenient too.
+- **A restored record must never claim local media.** `videoFileName` and `thumbnailFileName` stay nil, and UI that plays or shares a clip gates on **`record.hasLocalVideo`** (file existence), not on the name being non-nil. `AnalysisRecordDetailView` shows a "Restored from your account" banner instead of a player. Covered by `SyncRestoreTests`.
 
 **Coach tier.** `coach_roster()` and friends are SECURITY DEFINER RPCs in `supabase/schema.sql`; `CoachService` calls them. A coach reads a linked client's *measurements* only, and only while `coach_clients.status = 'active'`. Coach tooling is gated on **`hasCoachEntitlement`** and is deliberately **not** opened by the DEBUG `developmentUnlocked` path.
 
@@ -216,6 +223,7 @@ scripts/release.sh --no-upload  # archive + export only
 - Rendering an Everkinetic illustration without its credit line next to it.
 - Renaming `AnalysisRecord.recordID` to `id` (collides with `PersistentModel`).
 - Writing analysis media to `temporaryDirectory` instead of `AnalysisStorage`.
+- Assuming `record.videoURL` points at a file that exists. Restored sessions have no clip — gate on `record.hasLocalVideo`.
 
 ## Open to-do (v1.x)
 
@@ -228,7 +236,7 @@ scripts/release.sh --no-upload  # archive + export only
 - [ ] Create the coach subscription products in App Store Connect (`com.kevinkjones.kinetriq.coach.*`) — full runbook in `docs/CoachSubscriptionSetup.md`; `CoachRosterView` shows a "not yet available" banner until they exist
 - [ ] Apply `supabase/schema.sql` and redeploy `revenuecat-webhook` — `docs/SupabaseDeploy.md`
 - [ ] Run the 14-day trial test in `docs/SubscriptionExperiments.md`
-- [ ] Restore synced history on reinstall (sync is push-only today, so a reinstall shows an empty Progress tab)
+- [x] ~~Restore synced history on reinstall~~ — `SyncService.restoreIfNeeded` pulls measurements back on launch; test procedure in `docs/SupabaseDeploy.md` §5
 - [ ] Web dashboard for coaches (the Postgres side is already transport-agnostic)
 
 Last updated: **Kinetriq 3.6.0** (unreleased — bump `project.yml` before shipping). Changes vs 3.5.6/51:
@@ -236,7 +244,7 @@ Last updated: **Kinetriq 3.6.0** (unreleased — bump `project.yml` before shipp
 2. **Progress tab is real.** `WorkoutHistoryView` replaces the "coming soon" placeholder: filterable session list, score and depth trends, 14-day activity, storage readout, per-session detail with playback, and delete.
 3. **Cross-session coaching.** New `TrendInsights` compares a movement's history — score direction, personal bests, depth drift, eccentric control, asymmetry, and layoffs — and needs three sessions before it says anything.
 4. **Live analysis produces a summary.** The live pipeline now accumulates session state under an `NSLock` shared with the capture queue and builds an `AnalysisSummary` on Stop, presented in `LiveSessionSummarySheet`. Before this, a live set produced no record at all.
-5. **Metrics sync.** `SyncService` uploads measurements to new `analysis_records` / `analysis_reps` tables with full RLS. **Video never leaves the device**; `HelpView` now says so precisely.
+5. **Metrics sync, both directions.** `SyncService` uploads measurements to new `analysis_records` / `analysis_reps` tables with full RLS, and `restoreIfNeeded` pulls them back on a fresh install or a second device, so a reinstall no longer shows an empty Progress tab. **Video never leaves the device** and therefore never comes back: restored sessions show their measurements plus a banner saying the clip stayed on the device that recorded it, and the share/play paths gate on `AnalysisRecord.hasLocalVideo` rather than assuming a file exists. `HelpView` says all of this precisely.
 6. **CSV export.** Sessions and per-rep rows, RFC 4180 escaped with a UTF-8 BOM for Excel. Fixed a latent bug where a value containing CRLF went out unquoted, because Swift treats `\r\n` as one Character.
 7. **Coach tier.** `coaches` / `coach_invites` / `coach_clients` plus `create_coach_invite`, `redeem_coach_invite`, and `coach_roster` RPCs; `CoachRosterView` orders clients by triage (never started → quiet → slipping → asymmetry) rather than as a feed of clips. Gated on a new `Kinetriq Coach` entitlement that the DEBUG unlock deliberately does not open. Products are not yet created in App Store Connect.
 8. **Fault-triggered technique content.** `TechniqueLibrary` surfaces at most two lessons after a set, each triggered by a measurement rather than by the exercise name. Illustration assets deferred pending the CC BY-SA question in `docs/ContentLibrary.md`.

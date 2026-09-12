@@ -30,6 +30,8 @@ struct HelpView: View {
          "No. Your video never leaves your device. All pose detection and analysis runs locally on your iPhone, and analyzed clips are stored in Kinetriq's own storage on the device — there is no video upload, no cloud video backup, and no one else can see your footage. The only way a clip leaves your phone is if you tap Share and send it somewhere yourself."),
         ("If videos stay on my device, what does sync back up?",
          "Your measurements: reps, joint angles, tempo, consistency scores, assessment grades, and the coaching notes generated with them. That's what makes your Progress history survive a new phone or a reinstall, and what lets Kinetriq compare this week's squat to last month's. You can turn it off entirely in Settings, and your history still works — it just stays on this device."),
+        ("I reinstalled Kinetriq. Why are my videos gone?",
+         "Your measurements came back — every session, rep, angle, tempo, score, and grade is in Progress. The clips did not, because they were never uploaded anywhere to come back from. Footage only ever exists on the device that recorded it, so deleting the app deletes it too. If there is a clip you want to keep, share it out to Photos or Files before you reinstall or switch phones."),
         ("I'm a physical therapist. Where does client footage live?",
          "On the device that filmed it, and nowhere else. Kinetriq does not store, transmit, or have access to your patients' video. Only the numeric measurements sync, and only when sync is enabled.")
     ]

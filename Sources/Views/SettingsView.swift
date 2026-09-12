@@ -263,6 +263,16 @@ struct SettingsView: View {
                 .foregroundStyle(KColor.accent)
                 .disabled(sync.isSyncing)
 
+                if sync.lastRestoredCount > 0 {
+                    HStack {
+                        Text("Restored")
+                        Spacer()
+                        Text("\(sync.lastRestoredCount) session\(sync.lastRestoredCount == 1 ? "" : "s")")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
                 HStack {
                     Text("Last synced")
                     Spacer()

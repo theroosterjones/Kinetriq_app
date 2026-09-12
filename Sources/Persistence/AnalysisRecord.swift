@@ -176,6 +176,16 @@ extension AnalysisRecord {
     var videoURL: URL? { videoFileName.flatMap(AnalysisStorage.url(forFileName:)) }
     var thumbnailURL: URL? { thumbnailFileName.flatMap(AnalysisStorage.url(forFileName:)) }
 
+    /// Whether the clip for this session is actually on this device.
+    ///
+    /// False for sessions restored from the account — video never syncs, so a restore
+    /// brings back measurements only — and also false if the file was lost. Checking
+    /// the file rather than the name covers both without needing a flag on the model.
+    var hasLocalVideo: Bool {
+        guard let videoURL else { return false }
+        return FileManager.default.fileExists(atPath: videoURL.path)
+    }
+
     /// Average tempo across the set, formatted like the per-rep strings ("3-1-2-1").
     var averageTempoString: String? {
         let reps = perRepMetrics

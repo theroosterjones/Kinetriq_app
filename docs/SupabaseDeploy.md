@@ -129,7 +129,37 @@ where table_schema = 'public'
 There should also be no Storage buckets. The app tells users in writing that video
 never leaves the device; this query is how you keep that honest.
 
-## 5. Verify the coach flow
+## 5. Verify restore-on-reinstall
+
+This is the half users notice. Push-only sync looks fine until someone gets a new
+phone, and then it looks like data loss.
+
+1. With at least two synced sessions in the account, **delete Kinetriq from the
+   device** (which discards the SwiftData store and the video files with it).
+2. Reinstall from TestFlight and sign in with the same account.
+3. Open the app and wait a moment. **Progress** should fill in, and
+   **Settings → Progress Sync** should show a **Restored** row with the session count.
+4. Open a restored session. It should show every measurement plus a banner reading
+   *"Restored from your account — the clip stayed on the device it was recorded on."*
+   There should be **no video player and no black rectangle**, and no
+   "Share analyzed video" button.
+5. Analyze something new and confirm it still uploads: the new row should appear in
+   `analysis_records` and the restored ones must not be duplicated.
+
+```sql
+-- Exactly one row per session, before and after the reinstall
+select id, count(*) from analysis_records group by id having count(*) > 1;
+```
+
+Restore runs once per signed-in user (a `kinetriq.sync.restored.<uuid>` flag in
+`UserDefaults`) and again automatically whenever the local store is empty, so a
+second reinstall works without any user action. **Sync Now** always pulls.
+
+If Progress stays empty, check that the sync toggle is on and that the account is the
+same one — restore filters on `user_id` explicitly as well as relying on RLS, so
+signing in as a different user correctly returns nothing.
+
+## 6. Verify the coach flow
 
 Needs two accounts. Use a second Apple ID or a throwaway email signup.
 
@@ -202,9 +232,11 @@ drop table if exists analysis_records cascade;
   first upload attempt, and sync upserts on it with
   `Prefer: resolution=merge-duplicates`. Retries are therefore safe and cannot
   duplicate a session.
-- **Sync is one-way today.** The app pushes; it never pulls. A user who deletes and
-  reinstalls gets an empty Progress tab even though their rows are in Postgres.
-  Restore-on-reinstall is a deliberate follow-up, not an oversight.
+- **Sync goes both ways, but video only ever goes one way: nowhere.** The app pushes
+  measurements and pulls them back on a fresh install (`SyncService.restoreIfNeeded`,
+  a paged `GET rest/v1/analysis_records?select=*,analysis_reps(*)`). Restored sessions
+  have no `videoFileName`, so the detail screen says the clip stayed on the device
+  that recorded it instead of showing a dead player. See §5 to test this.
 - **`coaches.client_limit` is the only cap that matters.** It is enforced inside
   `create_coach_invite`, which counts active clients plus outstanding invites. Client
   limits are not enforced anywhere in the app, so they cannot be bypassed by patching

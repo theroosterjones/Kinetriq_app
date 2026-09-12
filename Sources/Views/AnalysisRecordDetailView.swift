@@ -51,13 +51,19 @@ struct AnalysisRecordDetailView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("The saved measurements and the video for this session will be removed from this device.")
+            Text(record.hasLocalVideo
+                 ? "The saved measurements and the video for this session will be removed from this device."
+                 : "The saved measurements for this session will be removed from this device.")
         }
         .sheet(item: $sharePayload) { payload in
             ShareSheet(items: payload.items)
         }
         .onAppear {
-            if let url = record.videoURL { player = AVPlayer(url: url) }
+            // Check the file, not just the name: a restored session has no file, and a
+            // player built on a missing path renders a black rectangle with controls.
+            if record.hasLocalVideo, let url = record.videoURL {
+                player = AVPlayer(url: url)
+            }
         }
         .onDisappear { player?.pause() }
     }
@@ -79,6 +85,16 @@ struct AnalysisRecordDetailView: View {
             VideoPlayer(player: player)
                 .frame(height: 300)
                 .clipShape(RoundedRectangle(cornerRadius: KRadius.md, style: .continuous))
+        } else if record.videoFileName == nil {
+            // No file name at all means this came back from the account rather than
+            // being recorded here. Say that plainly — it is the privacy promise
+            // working as intended, not a failure.
+            InfoBanner(
+                icon: "icloud.and.arrow.down",
+                title: "Restored from your account",
+                message: "Your measurements are here. The clip stayed on the device it was recorded on — Kinetriq never uploads video.",
+                tint: KColor.accent
+            )
         } else {
             InfoBanner(
                 icon: "video.slash",
@@ -207,7 +223,7 @@ struct AnalysisRecordDetailView: View {
     @ViewBuilder
     private var shareActions: some View {
         VStack(spacing: KSpacing.sm) {
-            if let url = record.videoURL {
+            if record.hasLocalVideo, let url = record.videoURL {
                 Button {
                     sharePayload = SharePayload(items: [url])
                 } label: {
