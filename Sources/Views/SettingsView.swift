@@ -92,6 +92,11 @@ struct SettingsView: View {
                     } label: {
                         Label("Tips, camera setup & FAQ", systemImage: "lightbulb.max.fill")
                     }
+                    NavigationLink {
+                        AttributionView()
+                    } label: {
+                        Label("Credits & licenses", systemImage: "text.book.closed.fill")
+                    }
                 }
 
                 Section {

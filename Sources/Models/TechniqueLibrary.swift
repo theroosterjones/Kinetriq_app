@@ -217,6 +217,35 @@ struct TechniqueLesson: Identifiable, Equatable {
         self.illustrationAsset = illustrationAsset
         self.attribution = attribution
     }
+
+    /// Faults whose teaching point is a **position**, and therefore the only ones a
+    /// still illustration can actually help with.
+    ///
+    /// A drawing cannot show tempo, so pairing one with a rushed-eccentric lesson
+    /// would be decoration — and decoration next to a measurement makes the
+    /// measurement look like marketing.
+    static let illustratableFaults: Set<MovementFault> = [
+        .inconsistentDepth, .rangeBelowPersonalBest
+    ]
+
+    /// Returns a copy carrying the movement's reference illustration, when one exists
+    /// and this fault is one an image can speak to.
+    func withIllustration(for family: MovementFamily) -> TechniqueLesson {
+        guard Self.illustratableFaults.contains(fault),
+              let illustration = ExerciseIllustration.forFamily(family),
+              illustration.isAvailable else { return self }
+
+        return TechniqueLesson(
+            id: id,
+            fault: fault,
+            title: title,
+            why: why,
+            cues: cues,
+            drill: drill,
+            illustrationAsset: illustration.endFileName,
+            attribution: illustration.creditLine
+        )
+    }
 }
 
 /// Fault-triggered technique instruction.
@@ -258,15 +287,17 @@ enum TechniqueLibrary {
     // MARK: - Content
 
     static func lesson(for fault: MovementFault, family: MovementFamily) -> TechniqueLesson? {
+        let lesson: TechniqueLesson?
         switch fault {
-        case .rushedEccentric:      return rushedEccentric(family)
-        case .inconsistentDepth:    return inconsistentDepth(family)
-        case .acceleratingTempo:    return acceleratingTempo(family)
-        case .rangeBelowPersonalBest: return rangeRegression(family)
-        case .asymmetry:            return asymmetry(family)
-        case .lowTracking:          return lowTracking(family)
-        case .tooFewReps:           return tooFewReps(family)
+        case .rushedEccentric:      lesson = rushedEccentric(family)
+        case .inconsistentDepth:    lesson = inconsistentDepth(family)
+        case .acceleratingTempo:    lesson = acceleratingTempo(family)
+        case .rangeBelowPersonalBest: lesson = rangeRegression(family)
+        case .asymmetry:            lesson = asymmetry(family)
+        case .lowTracking:          lesson = lowTracking(family)
+        case .tooFewReps:           lesson = tooFewReps(family)
         }
+        return lesson?.withIllustration(for: family)
     }
 
     private static func rushedEccentric(_ family: MovementFamily) -> TechniqueLesson {

@@ -28,6 +28,7 @@ Use this file when picking up work on this repo. It summarizes architecture, con
 | `project.yml` | XcodeGen spec, versions, MediaPipe plist patch scripts, SPM `SwiftTasksVision` + RevenueCat |
 | `Sources/` | All app code + `pose_landmarker_full.task` (gitignored — see README for curl) |
 | `Sources/Persistence/` | SwiftData layer: `AnalysisRecord`, `AnalysisLibrary`, `AnalysisStorage` |
+| `Resources/Everkinetic/` | CC BY-SA 4.0 illustrations, **unmodified** — see the warning below |
 | `supabase/schema.sql` | Postgres schema: subscriptions, metrics sync, coach tables + RPCs |
 | `Tests/` | Unit tests |
 | `docs/` | Technical notes (VideoOrientation, Troubleshooting, ContentLibrary, WebsiteCopy, SubscriptionExperiments) |
@@ -124,7 +125,16 @@ Related: a `private func` on a SwiftUI `View` is **not** main-actor isolated. Ca
 
 **Cross-session coaching.** `TrendInsights` (history) is separate from `CoachingInsights` (one set). Thresholds are blunt first-vs-last comparisons, not fitted slopes — with five to ten sessions a regression line would imply precision the data does not have.
 
-**Technique content is fault-triggered.** `TechniqueLibrary` only shows a lesson when the user's own set produced the measurement behind it (`TechniqueFaultDetector`). `rangeBelowPersonalBest` compares against the user's own deepest recorded angle, never a population norm — Kinetriq has no population data. Illustration assets are **not** vendored; see **[docs/ContentLibrary.md](docs/ContentLibrary.md)** for the unresolved CC BY-SA share-alike question.
+**Technique content is fault-triggered.** `TechniqueLibrary` only shows a lesson when the user's own set produced the measurement behind it (`TechniqueFaultDetector`). `rangeBelowPersonalBest` compares against the user's own deepest recorded angle, never a population norm — Kinetriq has no population data.
+
+### Everkinetic illustrations are CC BY-SA — do not edit them (do not regress)
+
+`Resources/Everkinetic/` holds nine exercise illustrations used **byte-for-byte unmodified** under CC BY-SA 4.0. Share-alike attaches to *adaptations*, so recolouring, cropping, compositing, tracing, or drawing over any of these would oblige Kinetriq to release the result under CC BY-SA. Scaling and framing for display are fine; editing the files is not. Need a different crop? That is a new illustration — commission it.
+
+- Bundled as a **folder reference** in `project.yml`, not an asset catalog, so the originals stay verifiable. Loaded via `ExerciseIllustration.image(named:)`, never `UIImage(named:)`.
+- **Every image renders with its credit line** (`ExerciseIllustration.creditLine`) next to it — attribution in a settings screen alone does not satisfy the license. `Settings → Credits & licenses` (`AttributionView`) carries the full attribution plus the bundled license text.
+- Illustrations attach **only** to `TechniqueLesson.illustratableFaults` (`inconsistentDepth`, `rangeBelowPersonalBest`). An image cannot show tempo; do not widen this set.
+- Full reasoning: **[docs/ContentLibrary.md](docs/ContentLibrary.md)**.
 
 **CSV escaping.** `CSVExporter.escape` scans `unicodeScalars`, not `Characters`. Swift treats CRLF as a single grapheme cluster equal to neither `\r` nor `\n`, so a Character-wise check lets a Windows line break through unquoted and splits the row.
 
@@ -202,6 +212,8 @@ scripts/release.sh --no-upload  # archive + export only
 - Decoding Supabase auth JSON with Foundation `.iso8601` (fractional `created_at` → NSCocoaErrorDomain 4864).
 - Calling `refreshStatus(showsLoadingGate: true)` from the paywall or from foregrounding (infinite loading ↔ paywall flash).
 - Adding any video-upload path. Metrics sync; video stays on device. The app tells users this in writing.
+- Editing, recolouring, cropping, or drawing over anything in `Resources/Everkinetic/` (CC BY-SA share-alike).
+- Rendering an Everkinetic illustration without its credit line next to it.
 - Renaming `AnalysisRecord.recordID` to `id` (collides with `PersistentModel`).
 - Writing analysis media to `temporaryDirectory` instead of `AnalysisStorage`.
 
@@ -211,8 +223,8 @@ scripts/release.sh --no-upload  # archive + export only
 - [ ] App Store submission (privacy policy, screenshots, metadata)
 - [ ] Additional exercises
 - [ ] Export analysis summary
-- [x] ~~CC BY-SA illustrations~~ — **decided: technique lessons ship as text.** Share-alike would cover any recolour/crop/overlay. `illustrationAsset` plumbing stays for commissioned or licensed art later. See `docs/ContentLibrary.md`.
-- [ ] Commission original technique illustrations, or render diagrams from stored pose data (the option no competitor can copy)
+- [x] ~~CC BY-SA illustrations~~ — **decided: nine Everkinetic illustrations bundled unmodified, with visible per-image attribution.** Never edit the files. See `docs/ContentLibrary.md`.
+- [ ] Eventually replace them with commissioned art or diagrams rendered from stored pose data — only `ExerciseIllustration` and the folder contents would change
 - [ ] Create the coach subscription products in App Store Connect (`com.kevinkjones.kinetriq.coach.*`) — full runbook in `docs/CoachSubscriptionSetup.md`; `CoachRosterView` shows a "not yet available" banner until they exist
 - [ ] Apply `supabase/schema.sql` and redeploy `revenuecat-webhook` — `docs/SupabaseDeploy.md`
 - [ ] Run the 14-day trial test in `docs/SubscriptionExperiments.md`

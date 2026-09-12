@@ -188,6 +188,7 @@ private struct ExerciseDetailSheet: View {
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
+                    movementReferenceCard
                     cuesCard
                     measuredFaultsCard
                     Spacer(minLength: KSpacing.xl)
@@ -224,6 +225,49 @@ private struct ExerciseDetailSheet: View {
                 }
             }
             Spacer(minLength: 0)
+        }
+    }
+
+    /// Start and end position for the movement pattern.
+    ///
+    /// A reference image belongs here, in the browsable library, far more than it does
+    /// next to a measured result — "what does this movement look like" is exactly the
+    /// question someone opening the library is asking.
+    @ViewBuilder
+    private var movementReferenceCard: some View {
+        if let illustration = item.exerciseType.flatMap(ExerciseIllustration.forExercise),
+           let start = illustration.startImage,
+           let end = illustration.endImage {
+            KCard {
+                VStack(alignment: .leading, spacing: KSpacing.sm) {
+                    Eyebrow(text: "Movement reference")
+                    HStack(spacing: KSpacing.sm) {
+                        illustrationFrame(start, caption: "Start")
+                        illustrationFrame(end, caption: "End")
+                    }
+                    Text(illustration.creditLine)
+                        .font(.system(size: 10))
+                        .foregroundStyle(KColor.textTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    /// Displayed as published — fitted, never cropped or tinted — because these are
+    /// unmodified CC BY-SA copies. See `ExerciseIllustration`.
+    private func illustrationFrame(_ image: UIImage, caption: String) -> some View {
+        VStack(spacing: 4) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFit()
+                .frame(height: 150)
+                .frame(maxWidth: .infinity)
+                .background(Color.white,
+                            in: RoundedRectangle(cornerRadius: KRadius.sm, style: .continuous))
+            Text(caption)
+                .font(KFont.micro)
+                .foregroundStyle(KColor.textTertiary)
         }
     }
 

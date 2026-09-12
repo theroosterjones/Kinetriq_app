@@ -64,12 +64,17 @@ struct TechniqueLessonCard: View {
                     .foregroundStyle(KColor.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                if let asset = lesson.illustrationAsset, UIImage(named: asset) != nil {
-                    Image(asset)
+                if let asset = lesson.illustrationAsset,
+                   let image = ExerciseIllustration.image(named: asset) {
+                    // Rendered as published: fitted, never cropped or recoloured, so it
+                    // stays an unmodified copy under CC BY-SA. See ExerciseIllustration.
+                    Image(uiImage: image)
                         .resizable()
                         .scaledToFit()
-                        .frame(maxHeight: 180)
-                        .clipShape(RoundedRectangle(cornerRadius: KRadius.sm, style: .continuous))
+                        .frame(maxHeight: 200)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.white,
+                                    in: RoundedRectangle(cornerRadius: KRadius.sm, style: .continuous))
                 }
 
                 VStack(alignment: .leading, spacing: KSpacing.xs) {

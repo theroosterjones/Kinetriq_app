@@ -38,23 +38,94 @@ lesson stays behind the measurement.
 `TechniqueLibrary.maximumLessons` is **2**. Three corrections is already more than
 anyone acts on after a set.
 
-## Decision: text-only for now
+## Decision: Everkinetic, unmodified, with visible attribution
 
-**Kinetriq ships technique lessons as text and cues, with no illustrations.** Taken
-2026-09-11. The plumbing (`illustrationAsset`, `attribution`, and the image branch in
-`TechniqueLessonCard`) stays in place so adding art later is a content change rather
-than an engineering one, but nothing is vendored today.
+**Kinetriq bundles nine Everkinetic exercise illustrations under CC BY-SA 4.0, used
+byte-for-byte as published.** Decided 2026-09-12, after weighing the alternatives in
+"What would unblock images" below.
 
-This costs less than it sounds like. The lessons are triggered by a measurement from
-the user's own set and describe what they specifically did, and that specificity is
-what makes them worth reading — a generic anatomical drawing adds polish, not
-understanding. Shipping text is not a placeholder for a real feature; it is the
-feature, slightly plainer.
+The constraint that comes with that choice is not optional, so it is worth stating
+plainly:
 
-## Why CC BY-SA 4.0 is the blocker
+> **Never edit these files, and never render them altered.** No recolouring to the
+> Kinetriq palette, no cropping, no compositing two into one frame, no drawing angle
+> markers over them, no tracing. Any of those creates a derivative work that
+> share-alike would require you to release under CC BY-SA 4.0.
+>
+> Fitting an image inside a frame, scaling it proportionally, and placing it on a
+> background are presentation, not modification. Those are fine.
+>
+> If you need a different crop or size, that is a **new illustration** — commission it
+> or license it. Do not open these in an editor.
 
-The obvious source is the **Everkinetic** exercise illustration set, which is
-**CC BY-SA 4.0**. The problem is not attribution, which is easy. It is **share-alike**.
+### How it is set up
+
+| Piece | Where |
+|---|---|
+| The files | `Resources/Everkinetic/` — original names (`0122-tension.png`), byte-identical |
+| License | `Resources/Everkinetic/LICENSE.md`, shipped in the bundle |
+| Bundling | `project.yml` folder reference, **not** an asset catalog |
+| Mapping + credits | `Sources/Models/ExerciseIllustration.swift` |
+| Credits screen | `Sources/Views/AttributionView.swift`, linked from Settings |
+
+They live in a top-level `Resources/` folder rather than under `Sources/` so the
+CC BY-SA material stays physically separate from Kinetriq's own code — which is the
+distinction share-alike cares about. A folder reference is used instead of an asset
+catalog because Xcode compiles catalogs into their own container format, and keeping
+the originals as loose files makes "unmodified" verifiable at a glance.
+
+### Where they appear, and where they deliberately do not
+
+**Movement reference in the exercise library** (`ExerciseLibraryView`): start and end
+position, side by side. This is where a reference image genuinely belongs — "what does
+this movement look like" is the question someone browsing the library is asking.
+
+**Position faults only** in technique lessons. `TechniqueLesson.illustratableFaults` is
+`{inconsistentDepth, rangeBelowPersonalBest}`, and `withIllustration(for:)` refuses to
+attach an image to anything else. A drawing cannot show tempo, so putting one beside a
+"your eccentric was 0.8 seconds" lesson is decoration — and decoration next to a
+measurement makes the measurement look like marketing. Rushed eccentric, accelerating
+tempo, asymmetry, low tracking, and short sets all stay text-only on purpose.
+
+**Not on assessments.** `ExerciseIllustration.forExercise(.shoulderAssessment)` returns
+nil. A barbell drawing would misrepresent a range-of-motion screen.
+
+### Attribution, which is a requirement and not a courtesy
+
+CC BY-SA 4.0 requires attribution reasonable to the medium, a statement of whether the
+work was modified, and a copy of or link to the license. All three are covered:
+
+- **Every image carries its credit line wherever it is shown** — `creditLine` renders
+  under the illustration in both the library card and the lesson card. It is never in
+  a settings screen only.
+- The line is `"Barbell Squat" by Everkinetic, CC BY-SA 4.0 — unmodified`, which is
+  title, author, license, and modification status in one string. `ExerciseIllustrationTests`
+  asserts all four parts are present for every illustration, and that a lesson can
+  never carry an image without also carrying its credit.
+- **Settings → Credits & licenses** names Everkinetic and Greg Priday, links to
+  db.everkinetic.com and to the license, lists all nine illustrations with source
+  URLs, and includes the full bundled license text.
+
+### The mapping is approximate, on purpose
+
+Everkinetic has no "hip hinge" drawing, so the Romanian deadlift stands in for the
+pattern; a seated cable row stands in for the row Kinetriq films from the side. Note
+also that `0097` (Wide Grip Lat Pull Down) has no file in Everkinetic's `dist/png`, so
+vertical pull uses `0096` (V Bar Pull Down). These are reference images for a movement
+pattern, not depictions of the exact setup being filmed.
+
+### Revisiting this
+
+The reason to revisit is not legal risk, it is that these are somebody else's drawings
+of a barbell gym, and they will always look like an import. When there is budget,
+commission the set or render diagrams from your own pose data — `ExerciseIllustration`
+is the only file that needs to change, plus swapping the folder contents.
+
+## What CC BY-SA 4.0 actually requires
+
+This is the reasoning behind the constraints above, kept so nobody has to work it
+out again. The obstacle was never attribution, which is easy, and it was never
+commercial use. It is **share-alike**.
 
 Creative Commons licenses with `SA` require that if you distribute an *adapted*
 version of the work, you license your adaptation under the same terms. Three things
@@ -85,7 +156,7 @@ permits it. A paid app can display CC BY-SA images. Selling the illustrations
 themselves would be a different question; bundling them in an app you charge for is
 not prohibited.
 
-## What would actually unblock images
+## What would let us stop using someone else's art
 
 In rough order of how much I would recommend them:
 
@@ -116,18 +187,29 @@ time if any of the above is going to hinge on it. The specific question: does bu
 unmodified CC BY-SA images in a proprietary iOS app, displayed alongside original text,
 constitute a collection rather than an adaptation?
 
-Until one of those lands, leave `illustrationAsset` nil. The lessons work without it.
+Option four is what shipped. The others remain open, and the plumbing does not care
+which one you pick.
 
-## Adding illustrations once that is settled
+## Swapping or adding illustrations
 
-1. Put the images in `Sources/Assets.xcassets` as image sets. Name them
-   `TechniqueSquatDepth`, `TechniqueHingeNeutralSpine`, and so on.
-2. Set `illustrationAsset:` on the relevant `TechniqueLesson`, and set `attribution:`
-   to the exact required credit string, e.g.
-   `"Illustration: Everkinetic, CC BY-SA 4.0"`.
+To replace the set (commissioned art, a licensed set, or generated diagrams):
+
+1. Drop the files into `Resources/Everkinetic/` — or a new sibling folder, adding a
+   matching folder reference in `project.yml`. Keep original file names.
+2. Update the catalog constants in `ExerciseIllustration`, and `creditLine` if the new
+   art has different licensing terms. If it is fully owned, `creditLine` and the
+   credits screen entry can go away entirely.
 3. Run `xcodegen generate`.
-4. `TechniqueLessonCard` already guards with `UIImage(named:) != nil`, so a missing
-   or misnamed asset degrades to text rather than showing an empty frame.
+4. `ExerciseIllustrationTests` will fail on anything unmapped, uncredited, or missing a
+   frame. Run it before assuming the swap worked.
+
+To add one for a movement that has none, add the constant, add it to
+`ExerciseIllustration.all` so it reaches the credits screen, and map it in both
+`forExercise(_:)` and `forFamily(_:)`.
+
+Every render path degrades to text when an image is missing — `isAvailable`,
+`startImage`, and `endImage` all return optionals that the views check — so a
+misnamed file shows no illustration rather than an empty frame.
 
 ## Adding a new fault
 

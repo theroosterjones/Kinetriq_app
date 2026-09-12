@@ -20,6 +20,12 @@ targets:
     platform: iOS
     sources:
       - path: Sources
+      # Folder reference, not an asset catalog: the Everkinetic illustrations are
+      # CC BY-SA 4.0 and ship byte-for-byte unmodified, license file included. A
+      # catalog would compile them into its own container and make that harder to
+      # verify. See docs/ContentLibrary.md.
+      - path: Resources/Everkinetic
+        type: folder
     configFiles:
       Debug: Config/KinetriqSecrets.xcconfig
       Release: Config/KinetriqSecrets.xcconfig
