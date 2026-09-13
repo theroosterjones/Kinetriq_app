@@ -30,6 +30,7 @@ Use this file when picking up work on this repo. It summarizes architecture, con
 | `Sources/Persistence/` | SwiftData layer: `AnalysisRecord`, `AnalysisLibrary`, `AnalysisStorage` |
 | `Resources/Everkinetic/` | CC BY-SA 4.0 illustrations, **unmodified** — see the warning below |
 | `supabase/schema.sql` | Postgres schema: subscriptions, metrics sync, coach tables + RPCs |
+| `web/coach/` | Coach web dashboard — static, zero-dependency, reads the same Supabase tables |
 | `Tests/` | Unit tests |
 | `docs/` | Technical notes (VideoOrientation, Troubleshooting, ContentLibrary, WebsiteCopy, SubscriptionExperiments) |
 | `AGENTS.md` | This file |
@@ -134,6 +135,34 @@ Related: a `private func` on a SwiftUI `View` is **not** main-actor isolated. Ca
 
 **Technique content is fault-triggered.** `TechniqueLibrary` only shows a lesson when the user's own set produced the measurement behind it (`TechniqueFaultDetector`). `rangeBelowPersonalBest` compares against the user's own deepest recorded angle, never a population norm — Kinetriq has no population data.
 
+### Coach web dashboard (`web/coach/`)
+
+A static folder — `index.html`, one stylesheet, and ES modules calling `auth/v1` and
+`rest/v1` by hand. **No framework, no bundler, no npm dependencies, no build step.** It
+reads the same tables and RPCs as `CoachService`, so the phone and the browser are two
+views of one source of truth rather than two datasets that can disagree. Deployment and
+rationale: **[web/coach/README.md](web/coach/README.md)**.
+
+- **Nothing renders through `innerHTML`.** Every string goes through `js/dom.js`, which
+  only sets `textContent`. The page displays other people's health measurements and
+  keeps a session token in `localStorage`; one injected script tag would be enough to
+  read a coach's whole roster. There is deliberately no HTML-string path to get wrong.
+- **Access is gated on `coaches.client_limit`**, not on a client-side entitlement check.
+  That column is written by `revenuecat-webhook` and is the value Postgres itself
+  enforces inside `create_coach_invite`, so the dashboard cannot become more permissive
+  than the database. No row → not a coach; `0` → lapsed, read-only, no new invites.
+- **Four things are duplicated from Swift and must stay in step:** triage thresholds and
+  queue order (`CoachTriage`), tempo 0.6-second rounding (`TempoDurationFormatter`), the
+  score colour ramp (`KColor.score`), and CSV columns plus RFC 4180 escaping
+  (`CSVExporter`). `node --test` in `web/coach/` pins all four. A coach who sees a
+  different client at the top of the queue in the browser than on the phone has no
+  reason to trust either ordering.
+- Config lives in gitignored `web/coach/config.js` (template committed). The anon key is
+  public by design; the service-role key must never appear there.
+- Sign-in offers email-link as a peer of password, not a fallback: a coach who signed up
+  with Apple on the phone has no password, so it is their only way in. That needs the
+  dashboard origin allow-listed in Supabase → Authentication → URL Configuration.
+
 ### Everkinetic illustrations are CC BY-SA — do not edit them (do not regress)
 
 `Resources/Everkinetic/` holds nine exercise illustrations used **byte-for-byte unmodified** under CC BY-SA 4.0. Share-alike attaches to *adaptations*, so recolouring, cropping, compositing, tracing, or drawing over any of these would oblige Kinetriq to release the result under CC BY-SA. Scaling and framing for display are fine; editing the files is not. Need a different crop? That is a new illustration — commission it.
@@ -224,6 +253,8 @@ scripts/release.sh --no-upload  # archive + export only
 - Renaming `AnalysisRecord.recordID` to `id` (collides with `PersistentModel`).
 - Writing analysis media to `temporaryDirectory` instead of `AnalysisStorage`.
 - Assuming `record.videoURL` points at a file that exists. Restored sessions have no clip — gate on `record.hasLocalVideo`.
+- Rendering Supabase data through `innerHTML` in `web/coach/`, or adding a framework, bundler, or npm dependency to it.
+- Changing a triage threshold, the tempo rounding rule, the score ramp, or a CSV column on one platform only — `web/coach/` duplicates all four.
 
 ## Open to-do (v1.x)
 
@@ -237,7 +268,8 @@ scripts/release.sh --no-upload  # archive + export only
 - [ ] Apply `supabase/schema.sql` and redeploy `revenuecat-webhook` — `docs/SupabaseDeploy.md`
 - [ ] Run the 14-day trial test in `docs/SubscriptionExperiments.md`
 - [x] ~~Restore synced history on reinstall~~ — `SyncService.restoreIfNeeded` pulls measurements back on launch; test procedure in `docs/SupabaseDeploy.md` §5
-- [ ] Web dashboard for coaches (the Postgres side is already transport-agnostic)
+- [x] ~~Web dashboard for coaches~~ — `web/coach/`, static and zero-dependency; deploy steps in its README and `docs/SupabaseDeploy.md` §6
+- [ ] Account/billing pages on the web, if wanted (`docs/WebBackend.md`)
 
 Last updated: **Kinetriq 3.6.0** (unreleased — bump `project.yml` before shipping). Changes vs 3.5.6/51:
 1. **Analyses are saved.** New SwiftData layer (`AnalysisRecord`, `AnalysisLibrary`, `AnalysisStorage`) persists every exercise and assessment from both pipelines. Previously every measurement was discarded into `@State` the moment the view went away — the analysis engine was mature and nothing it produced survived. Video and thumbnails move from `temporaryDirectory` into Application Support so they stop disappearing.
@@ -246,12 +278,13 @@ Last updated: **Kinetriq 3.6.0** (unreleased — bump `project.yml` before shipp
 4. **Live analysis produces a summary.** The live pipeline now accumulates session state under an `NSLock` shared with the capture queue and builds an `AnalysisSummary` on Stop, presented in `LiveSessionSummarySheet`. Before this, a live set produced no record at all.
 5. **Metrics sync, both directions.** `SyncService` uploads measurements to new `analysis_records` / `analysis_reps` tables with full RLS, and `restoreIfNeeded` pulls them back on a fresh install or a second device, so a reinstall no longer shows an empty Progress tab. **Video never leaves the device** and therefore never comes back: restored sessions show their measurements plus a banner saying the clip stayed on the device that recorded it, and the share/play paths gate on `AnalysisRecord.hasLocalVideo` rather than assuming a file exists. `HelpView` says all of this precisely.
 6. **CSV export.** Sessions and per-rep rows, RFC 4180 escaped with a UTF-8 BOM for Excel. Fixed a latent bug where a value containing CRLF went out unquoted, because Swift treats `\r\n` as one Character.
-7. **Coach tier.** `coaches` / `coach_invites` / `coach_clients` plus `create_coach_invite`, `redeem_coach_invite`, and `coach_roster` RPCs; `CoachRosterView` orders clients by triage (never started → quiet → slipping → asymmetry) rather than as a feed of clips. Gated on a new `Kinetriq Coach` entitlement that the DEBUG unlock deliberately does not open. Products are not yet created in App Store Connect.
+7. **Coach tier.** `coaches` / `coach_invites` / `coach_clients` plus `create_coach_invite`, `redeem_coach_invite`, and `coach_roster` RPCs; `CoachRosterView` orders clients by triage (never started → quiet → slipping → asymmetry) rather than as a feed of clips. Gated on a new `Kinetriq Coach` entitlement that the DEBUG unlock deliberately does not open. Products are not yet created in App Store Connect. A coach can now open a client and see that client's actual sessions — `CoachService.fetchSessions(for:)` reads `analysis_records` through the "Coaches read linked client analyses" policy into a read-only `CoachClientSession`, which is a plain struct precisely so someone else's history can never enter this device's SwiftData store.
 8. **Fault-triggered technique content.** `TechniqueLibrary` surfaces at most two lessons after a set, each triggered by a measurement rather than by the exercise name. Illustration assets deferred pending the CC BY-SA question in `docs/ContentLibrary.md`.
 9. **Website copy** rewritten in `docs/WebsiteCopy.md` (paste-ready; the Squarespace site is not in this repo).
 10. **RevenueCat webhook handles the coach tier.** It previously mirrored only `kinetriq_pro` and never wrote `coaches.client_limit`, so every coach would have landed on the column default of 15 regardless of tier — a Studio subscriber capped at 15, a Starter subscriber given 15. It now mirrors `Kinetriq Coach` as its own `subscriptions` row and writes the tier's roster cap. A lapse sets `client_limit = 0` rather than deleting the `coaches` row, because `coach_invites` and `coach_clients` cascade from it and a missed payment must not destroy a roster. Product-ID mapping pinned by `supabase/functions/_shared/utils.test.ts`.
+11. **Coach web dashboard** (`web/coach/`) — static, zero-dependency, no build step, reading the same tables and RPCs as the phone so the two cannot disagree. Roster with the same triage ordering, invite creation and revocation, one client's full session history with per-rep detail, and CSV export byte-compatible with the app's. Access is gated on `coaches.client_limit` rather than a browser-side entitlement check, so the dashboard can never be more permissive than the database. Sign-in offers an email link as a peer of password because a coach who signed up with Apple has no password. No video path exists here either — there is no column and no bucket to serve one from.
 
-**Deploying 3.6.0 needs two out-of-repo steps** — apply `supabase/schema.sql` and redeploy `revenuecat-webhook` (`docs/SupabaseDeploy.md`). The coach tier additionally needs six products created in App Store Connect (`docs/CoachSubscriptionSetup.md`).
+**Deploying 3.6.0 needs two out-of-repo steps** — apply `supabase/schema.sql` and redeploy `revenuecat-webhook` (`docs/SupabaseDeploy.md`). The coach tier additionally needs six products created in App Store Connect (`docs/CoachSubscriptionSetup.md`). Deploying the web dashboard needs its origin allow-listed in Supabase → Authentication → URL Configuration (`docs/SupabaseDeploy.md` §6).
 
 History: **3.5.6** build **51**. Changes vs 3.5.5/50:
 1. **Live analysis: blank screen instead of the share sheet after Stop** — `LiveAnalysisView.toggleRecording()` was a nonisolated `private func` invoked as `Task { await … }`, so its `@State` writes ran off the main actor; combined with `.sheet(isPresented:)` reading `savedVideoURL` separately inside the closure, the sheet presented before the URL landed and rendered an empty `if let` — a blank white sheet with no way to save the recording. Now `@MainActor` plus `.sheet(item: $sharePayload)`, so the sheet cannot present without its URL. A failed `stopRecording()` also surfaces an alert instead of silently discarding the take.

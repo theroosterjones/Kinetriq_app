@@ -42,6 +42,11 @@ Pods/
 .sourcepackages/
 Config/KinetriqSecrets.xcconfig
 
+# Coach dashboard runtime config. The anon key is public by design, but the repo
+# convention is that project identifiers are not committed — copy
+# web/coach/config.example.js to web/coach/config.js when deploying.
+web/coach/config.js
+
 # Supabase CLI local scratch / linked-project state
 supabase/.temp/
 supabase/.branches/

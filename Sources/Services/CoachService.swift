@@ -32,6 +32,60 @@ struct CoachClient: Identifiable, Equatable {
     }
 }
 
+/// One of a client's analyses, read-only.
+///
+/// Deliberately not an `AnalysisRecord`: these belong to someone else and must never
+/// enter this device's SwiftData store, where they would be indistinguishable from the
+/// coach's own history and would get queued for re-upload. A plain struct cannot be
+/// persisted by accident.
+///
+/// There is no video field, because `analysis_records` has no video column and there
+/// is no storage bucket. Same read the web dashboard makes — see `web/coach/`.
+struct CoachClientSession: Identifiable, Equatable {
+    let id: String
+    let date: Date
+    let kind: AnalysisKind
+    let movementName: String
+    let totalReps: Int
+    let score: Int?
+    let grade: LetterGrade?
+    let meanPeakAngle: Double?
+    let poseDetectionRate: Double
+    let asymmetryDeg: Double?
+    let asymmetryFlag: Bool
+    let insights: [String]
+    let details: [String]
+    let reps: [RepMetric]
+
+    /// Average tempo across the set, formatted like the per-rep strings ("3-1-2-1").
+    /// Averaged before rounding, matching `AnalysisRecord.averageTempoString`.
+    var averageTempoString: String? {
+        guard !reps.isEmpty else { return nil }
+        let n = Double(reps.count)
+        return TempoDurationFormatter.string(
+            eccentric: reps.reduce(0) { $0 + $1.eccentricDuration } / n,
+            pauseBottom: reps.reduce(0) { $0 + $1.pauseBottomDuration } / n,
+            concentric: reps.reduce(0) { $0 + $1.concentricDuration } / n,
+            pauseTop: reps.reduce(0) { $0 + $1.pauseTopDuration } / n
+        )
+    }
+
+    var summaryLine: String {
+        switch kind {
+        case .exercise:
+            var parts = ["\(totalReps) rep\(totalReps == 1 ? "" : "s")"]
+            if let score { parts.append("score \(score)") }
+            if let tempo = averageTempoString { parts.append("tempo \(tempo)") }
+            return parts.joined(separator: " · ")
+        case .assessment:
+            var parts: [String] = []
+            if let grade { parts.append("grade \(grade.rawValue)") }
+            if let asymmetryDeg { parts.append("\(Int(asymmetryDeg))° asymmetry") }
+            return parts.isEmpty ? "Assessment" : parts.joined(separator: " · ")
+        }
+    }
+}
+
 /// Why a client surfaced at the top of the queue. The roster shows exactly one of
 /// these per client so the list reads as a work queue rather than a dashboard.
 enum TriageReason: Equatable {
@@ -256,6 +310,63 @@ final class CoachService: ObservableObject {
         }
     }
 
+    // MARK: Client history
+
+    /// One client's sessions, newest first, with per-rep detail embedded.
+    ///
+    /// A table read rather than an RPC: the "Coaches read linked client analyses"
+    /// policy already scopes this to actively linked clients, and the roster RPC
+    /// deliberately returns aggregates. The explicit `user_id` filter is redundant with
+    /// that policy and stays anyway, so a policy edit cannot quietly widen it.
+    ///
+    /// Returns nil on failure so the caller can tell "nothing yet" from "couldn't
+    /// load"; `errorMessage` carries the reason.
+    func fetchSessions(for clientUserID: String, limit: Int = 50) async -> [CoachClientSession]? {
+        guard isAvailable,
+              let baseURL = AppEnvironment.supabaseURL,
+              let anonKey = AppEnvironment.supabaseAnonKey else { return nil }
+
+        await AuthService.shared.refreshSessionIfNeeded()
+        guard let session = AuthService.shared.session else { return nil }
+
+        var components = URLComponents(
+            url: baseURL.appendingPathComponent("rest/v1/analysis_records"),
+            resolvingAgainstBaseURL: false
+        )
+        components?.queryItems = [
+            URLQueryItem(name: "select", value: "*,analysis_reps(*)"),
+            URLQueryItem(name: "user_id", value: "eq.\(clientUserID)"),
+            URLQueryItem(name: "order", value: "recorded_at.desc"),
+            URLQueryItem(name: "limit", value: "\(limit)")
+        ]
+        guard let url = components?.url else { return nil }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue(anonKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse else { throw CoachError.invalidResponse }
+            guard (200..<300).contains(http.statusCode) else {
+                let detail = (try? JSONDecoder().decode(PostgrestErrorPayload.self, from: data))?.message
+                throw CoachError.requestFailed(status: http.statusCode, detail: detail)
+            }
+
+            let decoder = JSONDecoder()
+            // Postgres timestamps carry microseconds, which Foundation's `.iso8601`
+            // rejects — the trap that broke Sign in with Apple in 3.5.3.
+            decoder.dateDecodingStrategy = ISO8601Timestamp.decodingStrategy
+            let rows = try decoder.decode([RemoteAnalysisRecord].self, from: data)
+            return rows.map(\.asClientSession)
+        } catch {
+            errorMessage = Self.userFacingMessage(for: error)
+            logger.error("Client history failed: \(error.localizedDescription, privacy: .public)")
+            return nil
+        }
+    }
+
     /// Ends a link. Either side may do this; the policy allows both.
     func removeClient(_ client: CoachClient) async {
         guard isAvailable,
@@ -395,6 +506,35 @@ final class CoachService: ObservableObject {
 
 private struct PostgrestErrorPayload: Decodable {
     let message: String?
+}
+
+/// Reuses the restore path's lenient row decoder rather than declaring a second one.
+///
+/// Both jobs are the same job — reading `analysis_records` written by some other build
+/// of the app — and the only difference is where the result goes. A coach's copy stops
+/// at a plain struct; the owner's copy becomes an `AnalysisRecord`.
+extension RemoteAnalysisRecord {
+
+    var asClientSession: CoachClientSession {
+        CoachClientSession(
+            id: id,
+            date: recorded_at,
+            kind: kind.flatMap(AnalysisKind.init(rawValue:)) ?? .exercise,
+            movementName: movement_name ?? movement_key ?? "Session",
+            totalReps: total_reps ?? 0,
+            score: score,
+            grade: grade.flatMap(LetterGrade.init(rawValue:)),
+            meanPeakAngle: mean_peak_angle_deg,
+            poseDetectionRate: pose_detection_rate ?? 0,
+            asymmetryDeg: asymmetry_deg,
+            asymmetryFlag: asymmetry_flag ?? false,
+            insights: insights ?? [],
+            details: details ?? [],
+            reps: (analysis_reps ?? [])
+                .sorted { $0.rep_number < $1.rep_number }
+                .map(\.metric)
+        )
+    }
 }
 
 /// Wire shape of one `coach_roster()` row.

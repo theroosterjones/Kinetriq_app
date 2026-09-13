@@ -10,6 +10,8 @@ struct CoachClientDetailView: View {
 
     @ObservedObject private var coach = CoachService.shared
     @State private var showingRemoveConfirmation = false
+    @State private var sessions: [CoachClientSession]?
+    @State private var isLoadingSessions = true
     @Environment(\.dismiss) private var dismiss
 
     private var reason: TriageReason { CoachTriage.reason(for: client) }
@@ -21,13 +23,16 @@ struct CoachClientDetailView: View {
                 VStack(spacing: KSpacing.lg) {
                     statusCard
                     adherenceCard
+                    sessionsSection
                     privacyNote
                 }
                 .padding(.horizontal, KSpacing.screenH)
                 .padding(.top, KSpacing.xs)
                 .padding(.bottom, KSpacing.xxl)
             }
+            .refreshable { await loadSessions() }
         }
+        .task { await loadSessions() }
         .navigationTitle(client.displayName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -73,8 +78,8 @@ struct CoachClientDetailView: View {
                               filled: true)
                         if let delta = client.scoreDelta {
                             Text(delta >= 0
-                                 ? "Up \(delta) points from the session before"
-                                 : "Down \(abs(delta)) points from the session before")
+                                 ? "Up \(delta) point\(delta == 1 ? "" : "s") from the session before"
+                                 : "Down \(abs(delta)) point\(abs(delta) == 1 ? "" : "s") from the session before")
                                 .font(KFont.caption)
                                 .foregroundStyle(delta >= 0 ? KColor.success : KColor.danger)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -126,6 +131,91 @@ struct CoachClientDetailView: View {
         if days == 0 { return "Today" }
         if days == 1 { return "1d" }
         return "\(days)d"
+    }
+
+    private func loadSessions() async {
+        sessions = await coach.fetchSessions(for: client.clientUserID)
+        isLoadingSessions = false
+    }
+
+    // MARK: - Sessions
+
+    /// The same rows the web dashboard lists, read through the same policy. A coach
+    /// checking a client on their phone and on a laptop has to see one history.
+    @ViewBuilder
+    private var sessionsSection: some View {
+        VStack(alignment: .leading, spacing: KSpacing.sm) {
+            SectionHeader("Sessions", eyebrow: "Measurements")
+
+            if isLoadingSessions {
+                KCard { ProgressView().frame(maxWidth: .infinity) }
+            } else if let sessions, !sessions.isEmpty {
+                KCard(padding: KSpacing.sm) {
+                    VStack(spacing: 0) {
+                        ForEach(Array(sessions.enumerated()), id: \.element.id) { index, session in
+                            if index > 0 { Divider().overlay(KColor.separator) }
+                            row(for: session)
+                        }
+                    }
+                }
+            } else if sessions == nil {
+                InfoBanner(
+                    icon: "wifi.exclamationmark",
+                    title: "Couldn't load sessions",
+                    message: "The roster above is still accurate. Pull down to try again.",
+                    tint: KColor.warning
+                )
+            } else {
+                KCard {
+                    Text("Nothing analyzed yet. Sessions appear here as soon as \(client.displayName) analyzes a set with sync turned on.")
+                        .font(KFont.caption)
+                        .foregroundStyle(KColor.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    private func row(for session: CoachClientSession) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(session.movementName)
+                    .font(KFont.callout)
+                    .foregroundStyle(KColor.textPrimary)
+                Spacer(minLength: KSpacing.xs)
+                if let score = session.score {
+                    Text("\(score)")
+                        .font(KFont.numeral(20))
+                        .monospacedDigit()
+                        .foregroundStyle(KColor.score(score))
+                } else if let grade = session.grade {
+                    Text(grade.rawValue)
+                        .font(KFont.numeral(20))
+                        .foregroundStyle(KColor.grade(grade))
+                }
+            }
+            Text(session.summaryLine)
+                .font(KFont.caption)
+                .foregroundStyle(KColor.textSecondary)
+            Text(session.date.formatted(date: .abbreviated, time: .shortened))
+                .font(.system(size: 11))
+                .foregroundStyle(KColor.textTertiary)
+
+            // The tracking rate is the caveat on every number above it. A set detected
+            // in 30% of frames has real measurements attached and they mean much less.
+            if session.poseDetectionRate < 0.7 {
+                TrackingQualityRow(rate: session.poseDetectionRate)
+                    .padding(.top, 2)
+            }
+            if let insight = session.insights.first {
+                Text(insight)
+                    .font(KFont.caption)
+                    .foregroundStyle(KColor.textSecondary)
+                    .padding(.top, 2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.vertical, KSpacing.xs)
     }
 
     private var privacyNote: some View {

@@ -132,27 +132,40 @@ Behavior:
 3. Delete the Supabase auth user with the service-role admin API.
 4. Optionally leave revenue events anonymized for financial audit records.
 
-## Web app MVP
+## Coach dashboard — built, in `web/coach/`
 
-Recommended stack:
+The first web surface exists and is the coach dashboard, not an account portal. Full
+notes in **[web/coach/README.md](../web/coach/README.md)**.
 
-- Next.js or React app hosted on Vercel, Netlify, or Supabase hosting.
-- Supabase Auth for login.
-- Subscription/account status queried from Supabase.
-- RevenueCat Web Billing or Stripe through RevenueCat for web purchases later.
+- **Static folder, zero dependencies.** `index.html`, one stylesheet, and ES modules
+  that call `auth/v1` and `rest/v1` directly. No build step, so deploying is uploading.
+- **Same data as the phone.** Roster via `coach_roster()`, invites via
+  `create_coach_invite`, client sessions via a `analysis_records` read scoped by the
+  "Coaches read linked client analyses" policy. Both surfaces read one source of truth.
+- **Access gate is `coaches.client_limit`**, written by `revenuecat-webhook`. No
+  RevenueCat SDK in the browser: the dashboard must not be able to be more permissive
+  than the database.
+- **No video, because there is none to serve.** Do not add a bucket to satisfy a
+  dashboard feature request.
+- Triage ordering, tempo rounding, the score ramp, and CSV escaping are duplicated from
+  Swift and pinned by `node --test` in `web/coach/tests/`. Change one side, change both.
 
-MVP pages:
+Deployment needs one Supabase setting: add the dashboard origin to
+**Authentication → URL Configuration** as Site URL and Redirect URL, or email sign-in
+links will not come back.
 
-- Login/signup.
-- Account settings.
-- Subscription status.
-- Promo-code redemption.
-- Manage billing link.
-- Download iOS app link.
+## Still to build
 
-Later pages:
+Account/billing pages, if they turn out to be wanted:
 
-- Workout/session history.
-- Exported analysis summaries.
-- Trainer/client dashboard.
-- Web upload/analysis if product direction supports it.
+- Account settings and subscription status (read `subscriptions`).
+- Manage-billing link out to Apple, plus a Download-for-iPhone link.
+- RevenueCat Web Billing or Stripe through RevenueCat for web purchases.
+
+Deliberately **not** planned:
+
+- Web upload or web analysis. The analysis pipeline is on-device, and a browser upload
+  path would put client video on a server, which is the one thing every privacy claim
+  Kinetriq makes depends on not happening.
+- In-app or in-browser promo-code redemption. Removed for App Store compliance
+  (Guideline 3.1.1); comps go through Apple offer codes.

@@ -159,7 +159,24 @@ If Progress stays empty, check that the sync toggle is on and that the account i
 same one — restore filters on `user_id` explicitly as well as relying on RLS, so
 signing in as a different user correctly returns nothing.
 
-## 6. Verify the coach flow
+## 6. Allow the coach dashboard to sign people in
+
+Only needed once, and only when you deploy `web/coach/` (see
+`web/coach/README.md`). **Authentication → URL Configuration:**
+
+- **Site URL** — the dashboard origin, e.g. `https://app.kinetriq.com`.
+- **Redirect URLs** — the same origin, plus `http://127.0.0.1:8765` if you develop
+  locally.
+
+Email sign-in links land on `https://your-host/#access_token=…`, and GoTrue refuses to
+redirect anywhere that is not allow-listed. Skip this and the dashboard's email-link
+sign-in silently fails — which matters more than it sounds, because a coach who created
+their account with Sign in with Apple has no password and the link is their only way in.
+
+Nothing else is needed server-side. The dashboard uses the existing tables, the existing
+RPCs, and the anon key.
+
+## 7. Verify the coach flow
 
 Needs two accounts. Use a second Apple ID or a throwaway email signup.
 
