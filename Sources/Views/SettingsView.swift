@@ -1,8 +1,11 @@
 import SwiftUI
+import SwiftData
 
 struct SettingsView: View {
     @ObservedObject private var auth = AuthService.shared
     @ObservedObject private var purchases = PurchaseService.shared
+    @ObservedObject private var sync = SyncService.shared
+    @Environment(\.modelContext) private var modelContext
     @State private var config = AnalysisConfig.default
     @State private var showAdvanced = false
     @State private var isRestoring = false
@@ -15,6 +18,8 @@ struct SettingsView: View {
                 brandHeader
                 accountSection
                 subscriptionSection
+                progressSyncSection
+                coachingSection
 
                 Section("Advanced Settings") {
                     DisclosureGroup(isExpanded: $showAdvanced) {
@@ -73,6 +78,12 @@ struct SettingsView: View {
                         Text("100% On-Device")
                             .foregroundStyle(.secondary)
                     }
+                    HStack {
+                        Text("Video storage")
+                        Spacer()
+                        Text(AnalysisStorage.formattedTotalSize)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Section {
@@ -80,6 +91,11 @@ struct SettingsView: View {
                         HelpView()
                     } label: {
                         Label("Tips, camera setup & FAQ", systemImage: "lightbulb.max.fill")
+                    }
+                    NavigationLink {
+                        AttributionView()
+                    } label: {
+                        Label("Credits & licenses", systemImage: "text.book.closed.fill")
                     }
                 }
 
@@ -200,6 +216,83 @@ struct SettingsView: View {
             Text("Subscription")
         } footer: {
             Text("Switch between monthly and yearly anytime with Change or Upgrade Plan. Cancel or change billing in Manage Apple Subscription. If you already subscribed but still see the paywall, tap Restore Purchases.")
+        }
+    }
+
+    private var coachingSection: some View {
+        Section {
+            NavigationLink {
+                CoachRosterView()
+            } label: {
+                Label(
+                    purchases.hasCoachAccess ? "My Clients" : "Kinetriq for Coaches",
+                    systemImage: "person.2.fill"
+                )
+            }
+            NavigationLink {
+                ConnectCoachView()
+            } label: {
+                Label("Connect with a Coach", systemImage: "link")
+            }
+        } header: {
+            Text("Coaching")
+        } footer: {
+            Text("Coaches see their clients' measurements — reps, angles, tempo, scores, and grades. Video is never shared either way.")
+        }
+    }
+
+    private var progressSyncSection: some View {
+        Section {
+            Toggle(isOn: Binding(
+                get: { sync.isEnabledByUser },
+                set: { sync.isEnabledByUser = $0 }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Sync progress to my account")
+                    Text("Measurements only — video never leaves this device.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .tint(KColor.accent)
+
+            if sync.isEnabledByUser && sync.isAvailable {
+                Button("Sync Now") {
+                    Task { await sync.syncAll(context: modelContext) }
+                }
+                .foregroundStyle(KColor.accent)
+                .disabled(sync.isSyncing)
+
+                if sync.lastRestoredCount > 0 {
+                    HStack {
+                        Text("Restored")
+                        Spacer()
+                        Text("\(sync.lastRestoredCount) session\(sync.lastRestoredCount == 1 ? "" : "s")")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                HStack {
+                    Text("Last synced")
+                    Spacer()
+                    Text(sync.isSyncing
+                         ? "Syncing…"
+                         : sync.lastSyncedAt?.formatted(date: .abbreviated, time: .shortened) ?? "Never")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                if let error = sync.lastErrorMessage {
+                    Text(error)
+                        .font(.footnote)
+                        .foregroundStyle(KColor.warning)
+                }
+            }
+        } header: {
+            Text("Progress Sync")
+        } footer: {
+            Text("Reps, joint angles, tempo, scores, and grades sync to your Kinetriq account so your history survives a new phone. Your videos stay in Kinetriq's storage on this device and are never uploaded. Turn this off and everything still works — your history just stays here.")
         }
     }
 

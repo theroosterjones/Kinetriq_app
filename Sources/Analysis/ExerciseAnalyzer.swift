@@ -122,6 +122,28 @@ struct AnalysisSummary {
     /// Low values explain missing overlays/reps without needing Console logs.
     let poseDetectionRate: Float
 
+    /// Direct init for callers that never hold the frame array.
+    ///
+    /// The saved-video pipeline buffers every `FrameAnalysis` and uses the init
+    /// below. The live pipeline cannot — a long set would mean tens of thousands of
+    /// retained frames — so it accumulates angle sums and phase durations as it goes
+    /// and assembles the summary here when recording stops.
+    init(totalReps: Int,
+         averageAngles: [JointAngle],
+         duration: Double,
+         tempoBreakdown: [TempoPhase: Double],
+         perRepMetrics: [RepMetric],
+         finalScore: Int?,
+         poseDetectionRate: Float) {
+        self.totalReps = totalReps
+        self.averageAngles = averageAngles
+        self.duration = duration
+        self.tempoBreakdown = tempoBreakdown
+        self.perRepMetrics = perRepMetrics
+        self.finalScore = finalScore
+        self.poseDetectionRate = poseDetectionRate
+    }
+
     init(from frames: [FrameAnalysis], duration: Double,
          repMetrics: [RepMetric] = [], score: Int? = nil,
          poseDetectionRate: Float = 1.0) {

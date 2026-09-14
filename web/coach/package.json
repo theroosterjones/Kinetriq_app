@@ -1,0 +1,10 @@
+{
+  "name": "kinetriq-coach-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Static coach dashboard for Kinetriq. No dependencies and no build step — this file exists so Node treats the browser modules as ESM when running the tests.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}

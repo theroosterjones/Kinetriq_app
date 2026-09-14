@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import MetalKit
 import AVKit
 import UIKit
@@ -53,6 +54,22 @@ final class LiveAnalysisViewModel: ObservableObject {
     private let recorderLock = NSLock()
     private var lowTrackingStreak = 0
 
+    /// Guards the analyzer and the session accumulators below, which are written on
+    /// the camera capture queue and read on the main actor when a recording stops.
+    /// Frame processing holds it for the duration of `analyze` so a snapshot can
+    /// never observe a half-updated analyzer; contention is negligible because a
+    /// snapshot happens once per session.
+    private let sessionLock = NSLock()
+
+    /// Running totals for the summary built when recording stops. The saved-video
+    /// pipeline can buffer every `FrameAnalysis` and compute averages afterwards; a
+    /// live set may run for minutes, so these accumulate instead.
+    private var sessionAngleSums: [JointType: (sum: Float, count: Int)] = [:]
+    private var sessionFrameCount = 0
+    private var sessionTrackedFrameCount = 0
+    private var sessionFirstTimestamp: Double?
+    private var sessionLastTimestamp: Double?
+
     init() {
         cameraService.onFrame = { [weak self] pixelBuffer, time in
             self?.processFrame(pixelBuffer: pixelBuffer, time: time)
@@ -62,11 +79,14 @@ final class LiveAnalysisViewModel: ObservableObject {
     // MARK: - Public Interface (called from main thread)
 
     func setAnalyzer(_ analyzer: FrameAnalyzerProtocol) {
-        _analyzer?.reset()
-        _analyzer = analyzer
-        metricsCollector.reset()
-        customOverlayState.reset()
-        lowTrackingStreak = 0
+        sessionLock.withLock {
+            _analyzer?.reset()
+            _analyzer = analyzer
+            metricsCollector.reset()
+            customOverlayState.reset()
+            lowTrackingStreak = 0
+            resetSessionAccumulatorsLocked()
+        }
         DispatchQueue.main.async {
             self.frameState.trackingWarningVisible = false
             self.frameState.currentScore = nil
@@ -94,6 +114,14 @@ final class LiveAnalysisViewModel: ObservableObject {
     }
 
     func startRecording() {
+        // The take begins now, so the summary should describe the take rather than
+        // everything since the camera opened.
+        sessionLock.withLock {
+            _analyzer?.reset()
+            metricsCollector.reset()
+            resetSessionAccumulatorsLocked()
+        }
+
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("live_\(UUID().uuidString).mp4")
         do {
@@ -128,6 +156,8 @@ final class LiveAnalysisViewModel: ObservableObject {
 
         let poseResult = poseLandmarker.detect(pixelBuffer: pixelBuffer, timestampMs: timestampMs)
 
+        sessionLock.lock()
+
         let frameAnalysis: FrameAnalysis
         if let poseResult, let analyzer = _analyzer {
             frameAnalysis = analyzer.analyze(landmarks: poseResult)
@@ -143,6 +173,8 @@ final class LiveAnalysisViewModel: ObservableObject {
             repCount: frameAnalysis.repCount,
             timestamp: timeSec
         )
+
+        accumulateSessionLocked(frame: frameAnalysis, tracked: poseResult != nil, timestamp: timeSec)
 
         // Build final instructions: base overlay + user-selected alignment lines + optional HUD
         var finalInstructions = frameAnalysis.overlayInstructions
@@ -163,6 +195,9 @@ final class LiveAnalysisViewModel: ObservableObject {
                     collector: metricsCollector))
         }
 
+        let score = metricsCollector.computeScore()
+        sessionLock.unlock()
+
         // Recording path: apply overlay to a copy, write to file
         let rec: LiveVideoRecorder? = recorderLock.withLock { _recorder }
         if let rec, let copy = clonePixelBuffer(pixelBuffer) {
@@ -176,7 +211,6 @@ final class LiveAnalysisViewModel: ObservableObject {
         let reps         = frameAnalysis.repCount
         let phase        = frameAnalysis.tempoPhase
         let hasTracking = poseResult != nil && !finalInstructions.isEmpty
-        let score = metricsCollector.computeScore()
 
         if hasTracking {
             lowTrackingStreak = 0
@@ -192,6 +226,84 @@ final class LiveAnalysisViewModel: ObservableObject {
             self.frameState.currentPhase = phase
             self.frameState.trackingWarningVisible = shouldShowTrackingWarning
             self.frameState.currentScore = score
+        }
+    }
+
+    // MARK: - Session Accumulation
+
+    /// Caller must hold `sessionLock`.
+    private func resetSessionAccumulatorsLocked() {
+        sessionAngleSums = [:]
+        sessionFrameCount = 0
+        sessionTrackedFrameCount = 0
+        sessionFirstTimestamp = nil
+        sessionLastTimestamp = nil
+    }
+
+    /// Caller must hold `sessionLock`.
+    private func accumulateSessionLocked(frame: FrameAnalysis, tracked: Bool, timestamp: Double) {
+        sessionFrameCount += 1
+        if tracked { sessionTrackedFrameCount += 1 }
+
+        if sessionFirstTimestamp == nil { sessionFirstTimestamp = timestamp }
+        sessionLastTimestamp = timestamp
+
+        for angle in frame.angles where angle.degrees.isFinite {
+            let existing = sessionAngleSums[angle.joint, default: (0, 0)]
+            sessionAngleSums[angle.joint] = (existing.sum + angle.degrees, existing.count + 1)
+        }
+    }
+
+    /// Everything needed to persist the take that just finished, captured under the
+    /// same lock frame processing uses so the analyzer can't be mid-frame.
+    struct SessionSnapshot {
+        let summary: AnalysisSummary
+        let assessmentMetrics: AssessmentMetrics?
+    }
+
+    func makeSessionSnapshot() -> SessionSnapshot {
+        sessionLock.withLock {
+            let reps = metricsCollector.completedReps
+
+            let averageAngles = sessionAngleSums.map { joint, totals in
+                JointAngle(joint: joint, degrees: totals.sum / Float(max(totals.count, 1)))
+            }
+
+            // Phase totals come from the completed reps rather than a separate
+            // accumulator — same numbers, one less thing to keep in sync.
+            var tempoBreakdown: [TempoPhase: Double] = [:]
+            for rep in reps {
+                tempoBreakdown[.eccentric, default: 0] += rep.eccentricDuration
+                tempoBreakdown[.pauseBottom, default: 0] += rep.pauseBottomDuration
+                tempoBreakdown[.concentric, default: 0] += rep.concentricDuration
+                tempoBreakdown[.pauseTop, default: 0] += rep.pauseTopDuration
+            }
+
+            let duration: Double
+            if let first = sessionFirstTimestamp, let last = sessionLastTimestamp {
+                duration = max(0, last - first)
+            } else {
+                duration = 0
+            }
+
+            let detectionRate = sessionFrameCount == 0
+                ? 0
+                : Float(sessionTrackedFrameCount) / Float(sessionFrameCount)
+
+            let summary = AnalysisSummary(
+                totalReps: reps.last?.repNumber ?? 0,
+                averageAngles: averageAngles,
+                duration: duration,
+                tempoBreakdown: tempoBreakdown,
+                perRepMetrics: reps,
+                finalScore: metricsCollector.computeScore(),
+                poseDetectionRate: detectionRate
+            )
+
+            return SessionSnapshot(
+                summary: summary,
+                assessmentMetrics: (_analyzer as? AssessmentAnalyzer)?.currentMetrics()
+            )
         }
     }
 
@@ -368,6 +480,7 @@ private struct LiveTrackingWarning: View {
 struct LiveAnalysisView: View {
 
     @StateObject private var viewModel = LiveAnalysisViewModel()
+    @Environment(\.modelContext) private var modelContext
 
     @State private var analysisCategory: AnalysisCategory = .exercise
     @State private var selectedExerciseType: ExerciseType = .squat
@@ -379,6 +492,8 @@ struct LiveAnalysisView: View {
     @State private var showPermissionAlert = false
     @State private var sharePayload: SharePayload?
     @State private var recordingErrorMessage: String?
+    @State private var completedSession: CompletedLiveSession?
+    @State private var isFinishingRecording = false
 
     private var selectedExercise: ExerciseConfig {
         ExerciseConfig.all.first { $0.type == selectedExerciseType } ?? ExerciseConfig.all[0]
@@ -443,6 +558,13 @@ struct LiveAnalysisView: View {
         }
         .sheet(item: $sharePayload) { payload in
             ShareSheet(items: payload.items)
+        }
+        .sheet(item: $completedSession) { session in
+            LiveSessionSummarySheet(
+                record: session.record,
+                videoURL: session.videoURL,
+                onShare: { sharePayload = SharePayload(items: [session.videoURL]) }
+            )
         }
         .alert(
             "Recording Not Saved",
@@ -654,7 +776,9 @@ struct LiveAnalysisView: View {
                     Circle()
                         .strokeBorder(.white, lineWidth: 3)
                         .frame(width: 72, height: 72)
-                    if viewModel.isRecording {
+                    if isFinishingRecording {
+                        ProgressView().tint(.white)
+                    } else if viewModel.isRecording {
                         RoundedRectangle(cornerRadius: 6)
                             .fill(.red)
                             .frame(width: 26, height: 26)
@@ -665,6 +789,8 @@ struct LiveAnalysisView: View {
                     }
                 }
             }
+            .disabled(isFinishingRecording)
+            .accessibilityLabel(viewModel.isRecording ? "Stop recording" : "Start recording")
 
             Spacer()
 
@@ -729,12 +855,87 @@ struct LiveAnalysisView: View {
             return
         }
 
-        guard let url = await viewModel.stopRecording() else {
+        isFinishingRecording = true
+        defer { isFinishingRecording = false }
+
+        // Snapshot before anything else: it reads analyzer state that keeps changing
+        // as long as the camera is running.
+        let snapshot = viewModel.makeSessionSnapshot()
+
+        guard let temporaryURL = await viewModel.stopRecording() else {
             recordingErrorMessage = "The recording could not be finalized, so there is nothing to save. Please try recording again."
             return
         }
 
-        sharePayload = SharePayload(items: [url])
+        let recordID = UUID()
+        let storedFileName = AnalysisStorage.adopt(
+            fileAt: temporaryURL,
+            as: AnalysisStorage.videoFileName(for: recordID)
+        )
+        // If the move into app storage failed, the take still exists in temp — share
+        // it rather than losing it, and save the metrics without a video.
+        let playbackURL = storedFileName.flatMap(AnalysisStorage.url(forFileName:)) ?? temporaryURL
+        let thumbnailFileName = await AnalysisStorage.makeThumbnail(from: playbackURL, id: recordID)
+
+        let record = makeRecord(
+            from: snapshot,
+            recordID: recordID,
+            videoFileName: storedFileName,
+            thumbnailFileName: thumbnailFileName
+        )
+        AnalysisLibrary.insert(record, into: modelContext)
+
+        completedSession = CompletedLiveSession(record: record, videoURL: playbackURL)
+    }
+
+    @MainActor
+    private func makeRecord(
+        from snapshot: LiveAnalysisViewModel.SessionSnapshot,
+        recordID: UUID,
+        videoFileName: String?,
+        thumbnailFileName: String?
+    ) -> AnalysisRecord {
+        let record: AnalysisRecord
+
+        if isAssessmentMode, let metrics = snapshot.assessmentMetrics {
+            record = AnalysisRecord.assessment(
+                metrics: metrics,
+                assessmentType: selectedAssessmentType,
+                plane: selectedAssessmentPlane,
+                side: selectedSide,
+                source: .liveCamera,
+                duration: snapshot.summary.duration,
+                poseDetectionRate: snapshot.summary.poseDetectionRate,
+                insights: CoachingInsights
+                    .assessment(metrics: metrics, trackingRate: snapshot.summary.poseDetectionRate)
+                    .map(\.text),
+                recordID: recordID
+            )
+        } else {
+            record = AnalysisRecord.exercise(
+                summary: snapshot.summary,
+                exerciseType: selectedExerciseType,
+                side: selectedSide,
+                source: .liveCamera,
+                insights: CoachingInsights
+                    .exercise(summary: snapshot.summary, exerciseType: selectedExerciseType)
+                    .map(\.text),
+                recordID: recordID
+            )
+        }
+
+        record.videoFileName = videoFileName
+        record.thumbnailFileName = thumbnailFileName
+        return record
+    }
+
+    /// Identifiable wrapper so the summary sheet cannot present before the record and
+    /// video URL are both in hand — the same failure mode that produced a blank white
+    /// share sheet before `.sheet(item:)` was adopted here.
+    struct CompletedLiveSession: Identifiable {
+        let id = UUID()
+        let record: AnalysisRecord
+        let videoURL: URL
     }
 
     private func liveOverlayBinding(for option: CustomOverlayOption) -> Binding<Bool> {

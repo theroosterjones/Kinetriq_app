@@ -24,7 +24,7 @@ enum TempoDurationFormatter {
 }
 
 /// Per-rep metrics capturing ROM peak and tempo phase durations.
-struct RepMetric: Codable {
+struct RepMetric: Codable, Equatable {
     let repNumber: Int
     let peakFlexionAngle: Float
     let eccentricDuration: Double

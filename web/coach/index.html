@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kinetriq for Coaches</title>
+<meta name="description" content="Kinetriq coach dashboard — your clients' movement measurements, never their video.">
+<meta name="robots" content="noindex">
+<!--
+  Deliberately strict, and the reason there is no inline script or style anywhere in
+  this app. `connect-src https:` has to stay open-ended because the Supabase project
+  URL is supplied at deploy time by config.js; tighten it to your project host if you
+  want to pin it.
+
+  `frame-ancestors` is deliberately absent: browsers ignore it in a <meta> policy, so
+  claiming it here would be false comfort. Send it as a real response header (along
+  with X-Frame-Options) from your host — see README.md.
+-->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src https:; form-action 'none'; base-uri 'none'">
+<link rel="stylesheet" href="styles.css">
+<!-- Classic script so it runs before the module below. Absent on a fresh checkout;
+     app.js detects that and shows setup instructions instead of failing silently. -->
+<script src="config.js"></script>
+<script type="module" src="js/app.js"></script>
+</head>
+<body>
+<div id="root" class="root">
+  <p class="boot">Loading…</p>
+</div>
+</body>
+</html>

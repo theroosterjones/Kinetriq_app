@@ -26,8 +26,14 @@ struct HelpView: View {
          "Rep counting depends on the movement reaching expected start and end ranges. If range of motion is partial, the camera angle changes the measured angle, or landmarks are blocked at key moments, reps may not register."),
         ("Why does the analyzed video sometimes show low pose tracking percentage?",
          "That means Kinetriq could not reliably detect the body in many frames. Improve lighting, move closer, keep the whole body visible, avoid cluttered backgrounds, and make sure the selected exercise matches the filming angle."),
-        ("Are videos uploaded to a server?",
-         "No. Kinetriq performs analysis on-device. Videos are selected from your device and processed locally. I am working on a cloud backup system so users can save workout histories to better analyze progress. If you are a coach, physical therapist, or related fitness professional, I recommend saving your client videos on your own drive in the meantime.")
+        ("Are my videos uploaded to a server?",
+         "No. Your video never leaves your device. All pose detection and analysis runs locally on your iPhone, and analyzed clips are stored in Kinetriq's own storage on the device — there is no video upload, no cloud video backup, and no one else can see your footage. The only way a clip leaves your phone is if you tap Share and send it somewhere yourself."),
+        ("If videos stay on my device, what does sync back up?",
+         "Your measurements: reps, joint angles, tempo, consistency scores, assessment grades, and the coaching notes generated with them. That's what makes your Progress history survive a new phone or a reinstall, and what lets Kinetriq compare this week's squat to last month's. You can turn it off entirely in Settings, and your history still works — it just stays on this device."),
+        ("I reinstalled Kinetriq. Why are my videos gone?",
+         "Your measurements came back — every session, rep, angle, tempo, score, and grade is in Progress. The clips did not, because they were never uploaded anywhere to come back from. Footage only ever exists on the device that recorded it, so deleting the app deletes it too. If there is a clip you want to keep, share it out to Photos or Files before you reinstall or switch phones."),
+        ("I'm a physical therapist. Where does client footage live?",
+         "On the device that filmed it, and nowhere else. Kinetriq does not store, transmit, or have access to your patients' video. Only the numeric measurements sync, and only when sync is enabled.")
     ]
 
     var body: some View {
@@ -36,8 +42,8 @@ struct HelpView: View {
             ScrollView {
                 VStack(spacing: KSpacing.sm) {
                     InfoBanner(icon: "iphone.gen3",
-                               title: "100% on-device",
-                               message: "Your videos never leave the phone. Analysis runs locally for privacy and speed.",
+                               title: "Your video stays on this device",
+                               message: "Analysis runs entirely on your iPhone. Only your measurements — reps, angles, tempo, scores — sync to your account so progress survives a new phone. Video never does.",
                                tint: KColor.teal)
                         .padding(.bottom, KSpacing.xs)
 

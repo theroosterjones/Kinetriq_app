@@ -4,6 +4,33 @@ import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-
 
 export const ENTITLEMENT_ID = "kinetriq_pro";
 
+/// The coach-tier entitlement. Must match one of `acceptedCoachEntitlementIDs` in
+/// `PurchaseService`, and the entitlement identifier configured in RevenueCat.
+export const COACH_ENTITLEMENT_ID = "Kinetriq Coach";
+
+/// Roster size each coach product allows, mirroring `PurchaseService.CoachTier`.
+///
+/// The webhook writes this into `coaches.client_limit`, which is what
+/// `create_coach_invite` enforces. Without it every coach sits on the column
+/// default regardless of what they paid for.
+const COACH_CLIENT_LIMITS: Record<string, number> = {
+  "com.kevinkjones.kinetriq.coach.starter": 5,
+  "com.kevinkjones.kinetriq.coach.pro": 15,
+  "com.kevinkjones.kinetriq.coach.studio": 40,
+};
+
+/// Maps a coach product identifier to its roster size, ignoring the billing period
+/// so `.monthly` and `.annual` of the same tier resolve identically.
+export function coachClientLimit(productID: string | null | undefined): number | null {
+  if (!productID) return null;
+  const base = productID.replace(/\.(monthly|annual)$/, "");
+  return COACH_CLIENT_LIMITS[base] ?? null;
+}
+
+export function isCoachProduct(productID: string | null | undefined): boolean {
+  return coachClientLimit(productID) !== null;
+}
+
 export const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
