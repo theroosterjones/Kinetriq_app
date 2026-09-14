@@ -95,16 +95,6 @@ enum AnalysisLibrary {
         return ((try? context.fetch(descriptor)) ?? []).reversed()
     }
 
-    /// Whether this device has any saved analyses at all.
-    ///
-    /// Counted rather than fetched because restore asks this on every launch, and
-    /// materializing a long history just to check for emptiness is wasteful.
-    @MainActor
-    static func isEmpty(in context: ModelContext) -> Bool {
-        let count = try? context.fetchCount(FetchDescriptor<AnalysisRecord>())
-        return (count ?? 0) == 0
-    }
-
     /// Records whose metrics have not yet been accepted by the backend.
     @MainActor
     static func fetchUnsynced(from context: ModelContext) -> [AnalysisRecord] {

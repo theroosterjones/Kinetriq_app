@@ -42,13 +42,23 @@ struct ExerciseIllustration: Equatable, Identifiable {
     /// them into the bundle root.
     private static let subdirectory = "Everkinetic"
 
+    private static func url(forFileName fileName: String) -> URL? {
+        Bundle.main.url(forResource: fileName, withExtension: "png", subdirectory: subdirectory)
+    }
+
+    /// Decoded images, cached. `UIImage(contentsOfFile:)` is the uncached initializer,
+    /// unlike `UIImage(named:)`, and these are read from SwiftUI view bodies that
+    /// re-evaluate freely — without the cache a scroll decodes the same full-size PNG
+    /// over and over on the main thread.
+    private static let cache = NSCache<NSString, UIImage>()
+
     static func image(named fileName: String) -> UIImage? {
-        guard let url = Bundle.main.url(
-            forResource: fileName,
-            withExtension: "png",
-            subdirectory: subdirectory
-        ) else { return nil }
-        return UIImage(contentsOfFile: url.path)
+        let key = fileName as NSString
+        if let cached = cache.object(forKey: key) { return cached }
+        guard let url = url(forFileName: fileName),
+              let image = UIImage(contentsOfFile: url.path) else { return nil }
+        cache.setObject(image, forKey: key)
+        return image
     }
 
     var startImage: UIImage? { Self.image(named: startFileName) }
@@ -56,7 +66,13 @@ struct ExerciseIllustration: Equatable, Identifiable {
 
     /// True when the bundle actually carries both frames, so callers can hide the
     /// illustration UI entirely rather than rendering an empty frame.
-    var isAvailable: Bool { startImage != nil && endImage != nil }
+    ///
+    /// A file-existence check rather than a decode: `TechniqueLibrary` asks this for
+    /// every candidate lesson on every body pass, and answering it by loading two PNGs
+    /// made a display detail cost real frame time.
+    var isAvailable: Bool {
+        Self.url(forFileName: startFileName) != nil && Self.url(forFileName: endFileName) != nil
+    }
 
     /// The bundled copy of the CC BY-SA 4.0 deed, shipped alongside the images
     /// because the license requires including it or linking to it.

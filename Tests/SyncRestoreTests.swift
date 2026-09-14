@@ -217,4 +217,51 @@ final class SyncRestoreTests: XCTestCase {
             accuracy: 0.001
         )
     }
+
+    // MARK: - Failure wording
+
+    /// A failed *download* must never tell the user their progress couldn't be saved.
+    /// That describes the one thing that didn't happen, and to someone whose history
+    /// hasn't appeared yet it reads as confirmation that it was lost.
+    ///
+    /// `@MainActor` because `SyncService` is, and that isolates its statics too — the
+    /// same reason `AuthJSONDecodingTests` annotates its message test.
+    @MainActor
+    func testDownloadFailuresNeverClaimProgressWasNotSaved() {
+        let errors: [Error] = [
+            SyncService.SyncError.requestFailed(status: 500, detail: nil),
+            SyncService.SyncError.invalidResponse,
+            URLError(.notConnectedToInternet)
+        ]
+
+        for error in errors {
+            let message = SyncService.userFacingMessage(for: error, direction: .download)
+            XCTAssertFalse(message.contains("couldn't be saved"), "download wording: \(message)")
+            XCTAssertFalse(message.contains("will retry automatically"), "download wording: \(message)")
+        }
+    }
+
+    /// Upload wording is unchanged, and download codes are distinguishable in a
+    /// screenshot so a support reply can tell the two directions apart.
+    @MainActor
+    func testUploadAndDownloadCarryDifferentReferenceCodes() {
+        let error = SyncService.SyncError.requestFailed(status: 500, detail: nil)
+
+        XCTAssertTrue(SyncService.userFacingMessage(for: error).contains("SYNC-500"))
+        XCTAssertTrue(SyncService.userFacingMessage(for: error, direction: .download)
+            .contains("SYNC-DL-500"))
+    }
+
+    /// An expired token is the same instruction either way, so it stays one string.
+    @MainActor
+    func test401TellsTheUserToSignInAgainInBothDirections() {
+        let error = SyncService.SyncError.requestFailed(status: 401, detail: nil)
+
+        for direction in [SyncService.Direction.upload, .download] {
+            XCTAssertTrue(
+                SyncService.userFacingMessage(for: error, direction: direction)
+                    .contains("Sign out and back in")
+            )
+        }
+    }
 }

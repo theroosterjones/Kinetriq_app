@@ -95,12 +95,11 @@ final class ExerciseIllustrationTests: XCTestCase {
         }
     }
 
-    /// Also proves the illustrations are actually bundled. Skips rather than fails when
-    /// the tests run without the app as host, since `Bundle.main` is the runner then.
+    /// Also proves the illustrations are actually bundled. KinetriqTests is a hosted
+    /// test bundle (`TEST_HOST` is the app), so `Bundle.main` is the app bundle and a
+    /// missing folder reference in the generated project must fail here rather than skip
+    /// — that stale-project case is exactly what this catches.
     func testPositionLessonsCarryAnImageAndItsCredit() throws {
-        try XCTSkipUnless(ExerciseIllustration.barbellSquat.isAvailable,
-                          "Everkinetic resources are not in this bundle")
-
         let lesson = try XCTUnwrap(TechniqueLibrary.lesson(for: .inconsistentDepth, family: .squat))
 
         XCTAssertEqual(lesson.illustrationAsset, ExerciseIllustration.barbellSquat.endFileName)
@@ -110,9 +109,6 @@ final class ExerciseIllustrationTests: XCTestCase {
     }
 
     func testEveryBundledIllustrationLoadsBothFrames() throws {
-        try XCTSkipUnless(ExerciseIllustration.barbellSquat.isAvailable,
-                          "Everkinetic resources are not in this bundle")
-
         for illustration in ExerciseIllustration.all {
             XCTAssertNotNil(illustration.startImage, "\(illustration.everkineticID) start missing")
             XCTAssertNotNil(illustration.endImage, "\(illustration.everkineticID) end missing")
@@ -120,9 +116,6 @@ final class ExerciseIllustrationTests: XCTestCase {
     }
 
     func testTheLicenseTextShipsWithTheImages() throws {
-        try XCTSkipUnless(ExerciseIllustration.barbellSquat.isAvailable,
-                          "Everkinetic resources are not in this bundle")
-
         let text = try XCTUnwrap(ExerciseIllustration.licenseText)
         XCTAssertTrue(text.contains("Attribution-ShareAlike 4.0 International"))
     }

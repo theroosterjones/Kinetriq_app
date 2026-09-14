@@ -187,14 +187,13 @@ struct TechniqueLesson: Identifiable, Equatable {
     let cues: [String]
     let drill: String?
 
-    /// Name of a bundled illustration asset, when one exists for this lesson.
+    /// File-name stem of a bundled illustration, when one exists for this lesson.
     ///
-    /// Always `nil` today: **Kinetriq ships these lessons as text.** The obvious
-    /// source, Everkinetic, is CC BY-SA 4.0, and share-alike would cover any
-    /// recolouring, cropping, or overlay — so the art could only ship pixel-for-pixel
-    /// unmodified. The plumbing and the attribution field stay so that commissioned
-    /// or properly licensed art is a content change rather than an engineering one.
-    /// Rationale and the routes that would unblock images: `docs/ContentLibrary.md`.
+    /// Never set literally in the catalog below: `withIllustration(for:)` attaches it for
+    /// position faults only, naming a PNG in the `Everkinetic` folder reference rather
+    /// than an asset-catalog image. Those files are CC BY-SA 4.0 and ship unmodified, so
+    /// `attribution` is populated in the same step and the two must travel together —
+    /// an image may never render without its credit. See `docs/ContentLibrary.md`.
     let illustrationAsset: String?
     let attribution: String?
 

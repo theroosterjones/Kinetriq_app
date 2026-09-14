@@ -217,6 +217,11 @@ final class CoachService: ObservableObject {
     @Published private(set) var hasCoachRecord = false
     @Published var errorMessage: String?
 
+    /// Kept separate from `errorMessage` because the roster screen renders that one as a
+    /// banner: a client history that fails to load must not surface as a roster-wide
+    /// failure the user sees after navigating back.
+    @Published private(set) var sessionsErrorMessage: String?
+
     private init() {}
 
     var isAvailable: Bool {
@@ -319,15 +324,19 @@ final class CoachService: ObservableObject {
     /// deliberately returns aggregates. The explicit `user_id` filter is redundant with
     /// that policy and stays anyway, so a policy edit cannot quietly widen it.
     ///
-    /// Returns nil on failure so the caller can tell "nothing yet" from "couldn't
-    /// load"; `errorMessage` carries the reason.
+    /// Returns nil only when a request actually failed, so the caller can tell "nothing
+    /// yet" from "couldn't load"; `sessionsErrorMessage` carries the reason. A build with
+    /// no backend configured has nothing to ask for and returns an empty history instead,
+    /// because reporting a network failure there would be a lie the user can't act on.
     func fetchSessions(for clientUserID: String, limit: Int = 50) async -> [CoachClientSession]? {
+        sessionsErrorMessage = nil
+
         guard isAvailable,
               let baseURL = AppEnvironment.supabaseURL,
-              let anonKey = AppEnvironment.supabaseAnonKey else { return nil }
+              let anonKey = AppEnvironment.supabaseAnonKey else { return [] }
 
         await AuthService.shared.refreshSessionIfNeeded()
-        guard let session = AuthService.shared.session else { return nil }
+        guard let session = AuthService.shared.session else { return [] }
 
         var components = URLComponents(
             url: baseURL.appendingPathComponent("rest/v1/analysis_records"),
@@ -361,7 +370,7 @@ final class CoachService: ObservableObject {
             let rows = try decoder.decode([RemoteAnalysisRecord].self, from: data)
             return rows.map(\.asClientSession)
         } catch {
-            errorMessage = Self.userFacingMessage(for: error)
+            sessionsErrorMessage = Self.userFacingMessage(for: error)
             logger.error("Client history failed: \(error.localizedDescription, privacy: .public)")
             return nil
         }

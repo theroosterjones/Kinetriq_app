@@ -63,8 +63,10 @@ final class SyncService: ObservableObject {
         await upload(pending, context: context)
     }
 
-    /// Re-uploads the whole library. Used by the manual "Sync now" action, which is
-    /// also the recovery path if a device was offline for a long stretch.
+    /// Re-uploads the whole library, then pulls anything this device is missing. The
+    /// manual "Sync now" action, and so also the recovery path after a long stretch
+    /// offline — or after a user deletes local history and wants it back, which the
+    /// automatic restore deliberately won't do on its own.
     func syncAll(context: ModelContext) async {
         guard isEnabledByUser, isAvailable, !isSyncing else { return }
         await upload(AnalysisLibrary.fetchAll(from: context), context: context)
@@ -77,8 +79,8 @@ final class SyncService: ObservableObject {
 
     // MARK: - Restore
 
-    /// Set once a restore has completed for a given user, so a genuinely empty
-    /// history isn't re-fetched on every launch.
+    /// Set once a restore has completed for a given user. Keyed by user so a second
+    /// account signing in on the same device still pulls its own history.
     private static func restoreKey(for userID: String) -> String {
         "kinetriq.sync.restored.\(userID)"
     }
@@ -96,10 +98,12 @@ final class SyncService: ObservableObject {
         guard isEnabledByUser, isAvailable, !isSyncing,
               let userID = AuthService.shared.session?.user.id else { return }
 
-        let alreadyRestored = UserDefaults.standard.bool(forKey: Self.restoreKey(for: userID))
-        // A fresh install has an empty store, which is the case worth catching. Once a
-        // restore has run, only an explicit "Sync now" pulls again.
-        guard !alreadyRestored || AnalysisLibrary.isEmpty(in: context) else { return }
+        // A reinstall takes UserDefaults with it, so a missing flag is what identifies
+        // a fresh install. An empty store deliberately does not qualify: "Delete
+        // Everything" leaves one behind, and pulling those sessions back down would
+        // undo a destructive action the user confirmed. Their measurements are still on
+        // the server, and "Sync now" fetches them again on request.
+        guard !UserDefaults.standard.bool(forKey: Self.restoreKey(for: userID)) else { return }
 
         await restore(context: context)
     }
@@ -115,6 +119,7 @@ final class SyncService: ObservableObject {
     private func restore(context: ModelContext) async {
         isSyncing = true
         lastErrorMessage = nil
+        lastRestoredCount = 0
         defer { isSyncing = false }
 
         await AuthService.shared.refreshSessionIfNeeded()
@@ -133,7 +138,11 @@ final class SyncService: ObservableObject {
                     userID: session.user.id
                 )
             } catch {
-                lastErrorMessage = Self.userFacingMessage(for: error)
+                // Earlier pages are already sitting in the context as pending inserts.
+                // Without this, the next unrelated `save()` anywhere in the app would
+                // commit a half-restored history behind an error message.
+                context.rollback()
+                lastErrorMessage = Self.userFacingMessage(for: error, direction: .download)
                 logger.error("Restore failed: \(error.localizedDescription, privacy: .public)")
                 return
             }
@@ -162,7 +171,8 @@ final class SyncService: ObservableObject {
                 logger.info("Restored \(restoredCount, privacy: .public) sessions from the account")
             }
         } catch {
-            lastErrorMessage = Self.userFacingMessage(for: error)
+            context.rollback()
+            lastErrorMessage = Self.userFacingMessage(for: error, direction: .download)
         }
     }
 
@@ -187,7 +197,10 @@ final class SyncService: ObservableObject {
             // Redundant with RLS, but an explicit filter means a policy change can
             // never quietly widen what this device pulls down.
             URLQueryItem(name: "user_id", value: "eq.\(userID)"),
-            URLQueryItem(name: "order", value: "recorded_at.desc"),
+            // `id` breaks ties: `recorded_at` is not unique, and Postgres gives no
+            // defined order among equal keys, so a tied row could land on two pages or
+            // on none — silently losing a session.
+            URLQueryItem(name: "order", value: "recorded_at.desc,id.desc"),
             URLQueryItem(name: "limit", value: "\(Self.restorePageSize)"),
             URLQueryItem(name: "offset", value: "\(offset)")
         ]
@@ -309,32 +322,61 @@ final class SyncService: ObservableObject {
             case .invalidResponse:
                 return "The server returned an unexpected response."
             case .requestFailed(let status, let detail):
-                return detail ?? "The server rejected the upload (HTTP \(status))."
+                // "Request", not "upload": restore reaches this too, and this string ends
+                // up in the log line a diagnostic gets read from.
+                return detail ?? "The server rejected the request (HTTP \(status))."
             }
         }
     }
 
+    /// Which way the transfer was going when it failed.
+    ///
+    /// The wording is not interchangeable. Telling someone their progress "couldn't be
+    /// saved" when a *download* failed describes the one thing that did not happen, and
+    /// reads as data loss to the user restore exists to reassure.
+    enum Direction {
+        case upload
+        case download
+    }
+
     /// Plain-language message plus a screenshot-able code, matching the pattern
     /// `AuthService` and `PurchaseService` already use.
-    static func userFacingMessage(for error: Error) -> String {
+    static func userFacingMessage(for error: Error, direction: Direction = .upload) -> String {
+        let prefix = direction == .upload ? "SYNC" : "SYNC-DL"
+
         if let syncError = error as? SyncError {
             switch syncError {
             case .notConfigured:
-                return withReference("Progress sync isn't available right now.", "SYNC-CONFIG")
+                return withReference("Progress sync isn't available right now.", "\(prefix)-CONFIG")
             case .invalidResponse:
-                return withReference("The server returned an unexpected response.", "SYNC-RESP")
+                return withReference("The server returned an unexpected response.", "\(prefix)-RESP")
             case .requestFailed(let status, _):
                 if status == 401 || status == 403 {
-                    return withReference("Your session expired. Sign out and back in to resume syncing.", "SYNC-\(status)")
+                    return withReference("Your session expired. Sign out and back in to resume syncing.", "\(prefix)-\(status)")
                 }
-                return withReference("Your progress couldn't be saved to your account. It's still on this device and will retry automatically.", "SYNC-\(status)")
+                switch direction {
+                case .upload:
+                    return withReference("Your progress couldn't be saved to your account. It's still on this device and will retry automatically.", "\(prefix)-\(status)")
+                case .download:
+                    return withReference("Couldn't load your history from your account. Nothing on this device was affected — try Sync Now again later.", "\(prefix)-\(status)")
+                }
             }
         }
         if let urlError = error as? URLError {
-            return withReference("You appear to be offline. Progress is saved on this device and will sync later.", "NET-\(urlError.errorCode)")
+            switch direction {
+            case .upload:
+                return withReference("You appear to be offline. Progress is saved on this device and will sync later.", "NET-\(urlError.errorCode)")
+            case .download:
+                return withReference("You appear to be offline, so your history couldn't be loaded from your account. Anything saved on this device is still here.", "NET-\(urlError.errorCode)")
+            }
         }
         let nsError = error as NSError
-        return withReference("Your progress couldn't be saved to your account right now.", "\(nsError.domain)-\(nsError.code)")
+        switch direction {
+        case .upload:
+            return withReference("Your progress couldn't be saved to your account right now.", "\(nsError.domain)-\(nsError.code)")
+        case .download:
+            return withReference("Your history couldn't be loaded from your account right now. Nothing on this device was affected.", "\(nsError.domain)-\(nsError.code)")
+        }
     }
 
     private static func withReference(_ message: String, _ reference: String) -> String {

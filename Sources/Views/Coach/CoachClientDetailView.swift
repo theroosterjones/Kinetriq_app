@@ -133,6 +133,10 @@ struct CoachClientDetailView: View {
         return "\(days)d"
     }
 
+    /// `@MainActor` because a `private func` on a `View` is not main-actor isolated, and
+    /// `.task` / `.refreshable` hand it a `@Sendable` closure that inherits nothing — so
+    /// without this the two `@State` writes below land off the main thread.
+    @MainActor
     private func loadSessions() async {
         sessions = await coach.fetchSessions(for: client.clientUserID)
         isLoadingSessions = false
@@ -162,7 +166,8 @@ struct CoachClientDetailView: View {
                 InfoBanner(
                     icon: "wifi.exclamationmark",
                     title: "Couldn't load sessions",
-                    message: "The roster above is still accurate. Pull down to try again.",
+                    message: coach.sessionsErrorMessage
+                        ?? "The roster above is still accurate. Pull down to try again.",
                     tint: KColor.warning
                 )
             } else {
